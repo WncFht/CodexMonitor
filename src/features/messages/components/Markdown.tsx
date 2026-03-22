@@ -1,8 +1,14 @@
-import { useEffect, useRef, useState, type ReactNode, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type MouseEvent,
+} from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { detectContentLanguageTag } from "../../../utils/contentLanguage";
+import { openExternalUrl } from "../../../services/tauri";
 import {
   describeFileTarget,
   formatParsedFileLocation,
@@ -26,7 +32,10 @@ type MarkdownProps = {
   showFilePath?: boolean;
   workspacePath?: string | null;
   onOpenFileLink?: (path: ParsedFileLocation) => void;
-  onOpenFileLinkMenu?: (event: React.MouseEvent, path: ParsedFileLocation) => void;
+  onOpenFileLinkMenu?: (
+    event: React.MouseEvent,
+    path: ParsedFileLocation,
+  ) => void;
   onOpenThreadLink?: (threadId: string) => void;
 };
 
@@ -90,7 +99,6 @@ function normalizeUrlLine(line: string) {
   return withoutBullet;
 }
 
-
 function extractUrlLines(value: string) {
   const lines = value.split(/\r?\n/);
   const urls = lines
@@ -134,8 +142,7 @@ function normalizeListIndentation(value: string) {
     const orderedMatch = line.match(/^(\s*)\d+\.\s+/);
     if (orderedMatch) {
       const rawIndent = orderedMatch[1].length;
-      const normalizedIndent =
-        rawIndent > 0 && rawIndent < 4 ? 4 : rawIndent;
+      const normalizedIndent = rawIndent > 0 && rawIndent < 4 ? 4 : rawIndent;
       activeOrderedItem = true;
       orderedBaseIndent = normalizedIndent + 4;
       orderedIndentOffset = null;
@@ -192,7 +199,7 @@ function LinkBlock({ urls }: LinkBlockProps) {
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            void openUrl(url);
+            void openExternalUrl(url);
           }}
         >
           {url}
@@ -217,7 +224,10 @@ function FileReferenceLink({
   onClick: (event: React.MouseEvent, path: ParsedFileLocation) => void;
   onContextMenu: (event: React.MouseEvent, path: ParsedFileLocation) => void;
 }) {
-  const { fullPath, fileName, lineLabel, parentPath } = describeFileTarget(rawPath, workspacePath);
+  const { fullPath, fileName, lineLabel, parentPath } = describeFileTarget(
+    rawPath,
+    workspacePath,
+  );
   return (
     <a
       href={href}
@@ -227,7 +237,9 @@ function FileReferenceLink({
       onContextMenu={(event) => onContextMenu(event, rawPath)}
     >
       <span className="message-file-link-name">{fileName}</span>
-      {lineLabel ? <span className="message-file-link-line">L{lineLabel}</span> : null}
+      {lineLabel ? (
+        <span className="message-file-link-line">L{lineLabel}</span>
+      ) : null}
       {showFilePath && parentPath ? (
         <span className="message-file-link-path">{parentPath}</span>
       ) : null}
@@ -334,7 +346,10 @@ export function Markdown({
     normalizedValue,
     typeof document === "undefined" ? undefined : document.documentElement.lang,
   );
-  const handleFileLinkClick = (event: React.MouseEvent, path: ParsedFileLocation) => {
+  const handleFileLinkClick = (
+    event: React.MouseEvent,
+    path: ParsedFileLocation,
+  ) => {
     event.preventDefault();
     event.stopPropagation();
     onOpenFileLink?.(path);
@@ -351,7 +366,10 @@ export function Markdown({
     event.stopPropagation();
     onOpenFileLinkMenu?.(event, path);
   };
-  const resolvedHrefFilePathCache = new Map<string, ParsedFileLocation | null>();
+  const resolvedHrefFilePathCache = new Map<
+    string,
+    ParsedFileLocation | null
+  >();
   const resolveHrefFilePath = (url: string) => {
     if (resolvedHrefFilePathCache.has(url)) {
       return resolvedHrefFilePathCache.get(url) ?? null;
@@ -418,7 +436,8 @@ export function Markdown({
         const clickHandler = (event: React.MouseEvent) =>
           handleFileLinkClick(event, hrefFilePath);
         const contextMenuHandler = onOpenFileLinkMenu
-          ? (event: React.MouseEvent) => handleFileLinkContextMenu(event, hrefFilePath)
+          ? (event: React.MouseEvent) =>
+              handleFileLinkContextMenu(event, hrefFilePath)
           : undefined;
         return (
           <a
@@ -448,7 +467,7 @@ export function Markdown({
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            void openUrl(url);
+            void openExternalUrl(url);
           }}
         >
           {children}
@@ -480,7 +499,10 @@ export function Markdown({
 
   if (codeBlockStyle === "message") {
     components.pre = ({ node, children }) => (
-      <PreBlock node={node as PreProps["node"]} copyUseModifier={codeBlockCopyUseModifier}>
+      <PreBlock
+        node={node as PreProps["node"]}
+        copyUseModifier={codeBlockCopyUseModifier}
+      >
         {children}
       </PreBlock>
     );

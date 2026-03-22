@@ -1,15 +1,21 @@
 // @vitest-environment jsdom
-import { cleanup, createEvent, fireEvent, render, screen } from "@testing-library/react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import {
+  cleanup,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { openExternalUrl } from "../../../services/tauri";
 import { expectOpenedFileTarget } from "../test/fileLinkAssertions";
 import { Markdown } from "./Markdown";
 
-vi.mock("@tauri-apps/plugin-opener", () => ({
-  openUrl: vi.fn(),
+vi.mock("../../../services/tauri", () => ({
+  openExternalUrl: vi.fn(),
 }));
 
-const openUrlMock = vi.mocked(openUrl);
+const openExternalUrlMock = vi.mocked(openExternalUrl);
 
 describe("Markdown file-like href behavior", () => {
   beforeEach(() => {
@@ -22,10 +28,7 @@ describe("Markdown file-like href behavior", () => {
 
   it("prevents file-like href navigation when no file opener is provided", () => {
     render(
-      <Markdown
-        value="See [setup](./docs/setup.md)"
-        className="markdown"
-      />,
+      <Markdown value="See [setup](./docs/setup.md)" className="markdown" />,
     );
 
     const link = screen.getByText("setup").closest("a");
@@ -257,7 +260,9 @@ describe("Markdown file-like href behavior", () => {
     );
 
     const link = screen.getByText("overview").closest("a");
-    expect(link?.getAttribute("href")).toBe("/workspaces/team/reviews/overview");
+    expect(link?.getAttribute("href")).toBe(
+      "/workspaces/team/reviews/overview",
+    );
 
     const clickEvent = createEvent.click(link as Element, {
       bubbles: true,
@@ -280,7 +285,9 @@ describe("Markdown file-like href behavior", () => {
     );
 
     const link = screen.getByText("overview").closest("a");
-    expect(link?.getAttribute("href")).toBe("/workspaces/team/reviews/overview");
+    expect(link?.getAttribute("href")).toBe(
+      "/workspaces/team/reviews/overview",
+    );
 
     const clickEvent = createEvent.click(link as Element, {
       bubbles: true,
@@ -303,7 +310,9 @@ describe("Markdown file-like href behavior", () => {
     );
 
     const link = screen.getByText("src").closest("a");
-    expect(link?.getAttribute("href")).toBe("/workspaces/team/CodexMonitor/src");
+    expect(link?.getAttribute("href")).toBe(
+      "/workspaces/team/CodexMonitor/src",
+    );
 
     const clickEvent = createEvent.click(link as Element, {
       bubbles: true,
@@ -394,14 +403,11 @@ describe("Markdown file-like href behavior", () => {
     );
 
     fireEvent.contextMenu(link as Element);
-    expect(onOpenFileLinkMenu).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        path: "I:\\gpt-projects\\CodexMonitor\\src\\features\\settings\\components\\sections\\SettingsDisplaySection.tsx",
-        line: 422,
-        column: null,
-      },
-    );
+    expect(onOpenFileLinkMenu).toHaveBeenCalledWith(expect.anything(), {
+      path: "I:\\gpt-projects\\CodexMonitor\\src\\features\\settings\\components\\sections\\SettingsDisplaySection.tsx",
+      line: 422,
+      column: null,
+    });
   });
 
   it("prevents unsupported route fragments without treating them as file links", () => {
@@ -415,7 +421,9 @@ describe("Markdown file-like href behavior", () => {
     );
 
     const link = screen.getByText("profile").closest("a");
-    expect(link?.getAttribute("href")).toBe("/workspace/settings/profile#details");
+    expect(link?.getAttribute("href")).toBe(
+      "/workspace/settings/profile#details",
+    );
 
     const clickEvent = createEvent.click(link as Element, {
       bubbles: true,
@@ -493,12 +501,18 @@ describe("Markdown file-like href behavior", () => {
       />,
     );
 
-    const link = screen.getByText("vscode://file/C:/repo/src/App.tsx:12").closest("a");
-    expect(link?.getAttribute("href")).toBe("vscode://file/C:/repo/src/App.tsx:12");
+    const link = screen
+      .getByText("vscode://file/C:/repo/src/App.tsx:12")
+      .closest("a");
+    expect(link?.getAttribute("href")).toBe(
+      "vscode://file/C:/repo/src/App.tsx:12",
+    );
     expect(container.querySelector(".message-file-link")).toBeNull();
 
     fireEvent.click(link as Element);
-    expect(openUrlMock).toHaveBeenCalledWith("vscode://file/C:/repo/src/App.tsx:12");
+    expect(openExternalUrlMock).toHaveBeenCalledWith(
+      "vscode://file/C:/repo/src/App.tsx:12",
+    );
   });
 
   it("opens explicit custom-scheme markdown links with the system handler", () => {
@@ -515,17 +529,14 @@ describe("Markdown file-like href behavior", () => {
     );
 
     fireEvent.click(link as Element);
-    expect(openUrlMock).toHaveBeenCalledWith(
+    expect(openExternalUrlMock).toHaveBeenCalledWith(
       "vscode://file/home/fanghaotian/Desktop/src/CodexMonitor-fork/src/main.tsx",
     );
   });
 
   it("keeps unsafe javascript links inert", () => {
     render(
-      <Markdown
-        value="[Bad](javascript:alert('x'))"
-        className="markdown"
-      />,
+      <Markdown value="[Bad](javascript:alert('x'))" className="markdown" />,
     );
 
     const link = screen.getByText("Bad").closest("a");
@@ -537,7 +548,7 @@ describe("Markdown file-like href behavior", () => {
     });
     fireEvent(link as Element, clickEvent);
     expect(clickEvent.defaultPrevented).toBe(true);
-    expect(openUrlMock).not.toHaveBeenCalled();
+    expect(openExternalUrlMock).not.toHaveBeenCalled();
   });
 
   it("does not turn workspace review #L anchors in inline code into file links", () => {
@@ -550,7 +561,9 @@ describe("Markdown file-like href behavior", () => {
     );
 
     expect(container.querySelector(".message-file-link")).toBeNull();
-    expect(container.querySelector("code")?.textContent).toBe("/workspace/reviews#L9");
+    expect(container.querySelector("code")?.textContent).toBe(
+      "/workspace/reviews#L9",
+    );
   });
 
   it("still opens mounted file links when the workspace basename is settings", () => {
@@ -597,5 +610,4 @@ describe("Markdown file-like href behavior", () => {
     expect(clickEvent.defaultPrevented).toBe(true);
     expect(onOpenFileLink).not.toHaveBeenCalled();
   });
-
 });

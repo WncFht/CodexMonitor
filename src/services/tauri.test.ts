@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import * as notification from "@tauri-apps/plugin-notification";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   exportMarkdownFile,
   addWorkspace,
@@ -51,6 +52,7 @@ import {
   readAgentConfigToml,
   readImageAsDataUrl,
   generateAgentDescription,
+  openExternalUrl,
   writeAgentConfigToml,
   writeAgentMd,
 } from "./tauri";
@@ -68,6 +70,10 @@ vi.mock("@tauri-apps/plugin-notification", () => ({
   isPermissionGranted: vi.fn(),
   requestPermission: vi.fn(),
   sendNotification: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/plugin-opener", () => ({
+  openUrl: vi.fn(),
 }));
 
 describe("tauri invoke wrappers", () => {
@@ -462,6 +468,29 @@ describe("tauri invoke wrappers", () => {
       line: 33,
       column: 7,
     });
+  });
+
+  it("invokes open_external_url", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce(undefined);
+
+    await openExternalUrl("https://example.com");
+
+    expect(invokeMock).toHaveBeenCalledWith("open_external_url", {
+      url: "https://example.com",
+    });
+  });
+
+  it("falls back to plugin opener when openExternalUrl lacks the Tauri invoke bridge", async () => {
+    const invokeMock = vi.mocked(invoke);
+    const openUrlMock = vi.mocked(openUrl);
+    invokeMock.mockRejectedValueOnce(
+      new TypeError("Cannot read properties of undefined (reading 'invoke')"),
+    );
+
+    await openExternalUrl("https://example.com/docs");
+
+    expect(openUrlMock).toHaveBeenCalledWith("https://example.com/docs");
   });
 
   it("invokes get_open_app_icon", async () => {

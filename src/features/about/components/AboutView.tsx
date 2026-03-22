@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternalUrl } from "../../../services/tauri";
 
 const GITHUB_URL = "https://github.com/Dimillian/CodexMonitor";
 const TWITTER_URL = "https://x.com/dimillian";
@@ -9,11 +9,11 @@ export function AboutView() {
   const [version, setVersion] = useState<string | null>(null);
 
   const handleOpenGitHub = () => {
-    void openUrl(GITHUB_URL);
+    void openExternalUrl(GITHUB_URL);
   };
 
   const handleOpenTwitter = () => {
-    void openUrl(TWITTER_URL);
+    void openExternalUrl(TWITTER_URL);
   };
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternalUrl } from "../../../services/tauri";
 import type { PostUpdateNoticeState, UpdateState } from "../hooks/useUpdater";
 import {
   ToastActions,
@@ -47,7 +47,9 @@ export function UpdateToast({
         <ToastCard className="update-toast" role="status">
           <ToastHeader className="update-toast-header">
             <ToastTitle className="update-toast-title">What's New</ToastTitle>
-            <div className="update-toast-version">v{postUpdateNotice.version}</div>
+            <div className="update-toast-version">
+              v{postUpdateNotice.version}
+            </div>
           </ToastHeader>
           {postUpdateNotice.stage === "loading" ? (
             <ToastBody className="update-toast-body">
@@ -74,7 +76,7 @@ export function UpdateToast({
                           rel="noreferrer"
                           onClick={(event) => {
                             event.preventDefault();
-                            void openUrl(href);
+                            void openExternalUrl(href);
                           }}
                         >
                           {children}
@@ -99,7 +101,7 @@ export function UpdateToast({
               <button
                 className="primary"
                 onClick={() => {
-                  void openUrl(postUpdateNotice.htmlUrl);
+                  void openExternalUrl(postUpdateNotice.htmlUrl);
                 }}
               >
                 View on GitHub
@@ -138,7 +140,9 @@ export function UpdateToast({
           ) : null}
         </ToastHeader>
         {state.stage === "checking" && (
-          <ToastBody className="update-toast-body">Checking for updates...</ToastBody>
+          <ToastBody className="update-toast-body">
+            Checking for updates...
+          </ToastBody>
         )}
         {state.stage === "available" && (
           <>
@@ -186,7 +190,9 @@ export function UpdateToast({
           </>
         )}
         {state.stage === "installing" && (
-          <ToastBody className="update-toast-body">Installing update…</ToastBody>
+          <ToastBody className="update-toast-body">
+            Installing update…
+          </ToastBody>
         )}
         {state.stage === "restarting" && (
           <ToastBody className="update-toast-body">Restarting…</ToastBody>
@@ -195,7 +201,9 @@ export function UpdateToast({
           <>
             <ToastBody className="update-toast-body">Update failed.</ToastBody>
             {state.error ? (
-              <ToastError className="update-toast-error">{state.error}</ToastError>
+              <ToastError className="update-toast-error">
+                {state.error}
+              </ToastError>
             ) : null}
             <ToastActions className="update-toast-actions">
               <button className="secondary" onClick={onDismiss}>

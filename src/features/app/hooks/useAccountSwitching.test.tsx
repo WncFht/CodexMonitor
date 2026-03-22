@@ -3,22 +3,22 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppServerEvent, AccountSnapshot } from "../../../types";
-import { cancelCodexLogin, runCodexLogin } from "../../../services/tauri";
+import {
+  cancelCodexLogin,
+  openExternalUrl,
+  runCodexLogin,
+} from "../../../services/tauri";
 import { subscribeAppServerEvents } from "../../../services/events";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAccountSwitching } from "./useAccountSwitching";
 
 vi.mock("../../../services/tauri", () => ({
   runCodexLogin: vi.fn(),
   cancelCodexLogin: vi.fn(),
+  openExternalUrl: vi.fn(),
 }));
 
 vi.mock("../../../services/events", () => ({
   subscribeAppServerEvents: vi.fn(),
-}));
-
-vi.mock("@tauri-apps/plugin-opener", () => ({
-  openUrl: vi.fn(),
 }));
 
 type Handlers = Parameters<typeof useAccountSwitching>[0];
@@ -53,7 +53,9 @@ async function mount(props: Handlers) {
   const root = createRoot(container);
   const render = async (nextProps: Handlers) => {
     await act(async () => {
-      root.render(<Harness {...nextProps} onChange={(value) => (latest = value)} />);
+      root.render(
+        <Harness {...nextProps} onChange={(value) => (latest = value)} />,
+      );
     });
   };
   await render(props);
@@ -95,7 +97,7 @@ describe("useAccountSwitching", () => {
     });
 
     expect(runCodexLogin).toHaveBeenCalledWith("ws-1");
-    expect(openUrl).toHaveBeenCalledWith("https://example.com/auth");
+    expect(openExternalUrl).toHaveBeenCalledWith("https://example.com/auth");
     expect(refreshAccountInfo).not.toHaveBeenCalled();
     expect(refreshAccountRateLimits).not.toHaveBeenCalled();
     expect(latest?.accountSwitching).toBe(true);
@@ -126,7 +128,10 @@ describe("useAccountSwitching", () => {
       loginId: "login-2",
       authUrl: "https://example.com/auth-2",
     });
-    vi.mocked(cancelCodexLogin).mockResolvedValue({ canceled: true, status: "canceled" });
+    vi.mocked(cancelCodexLogin).mockResolvedValue({
+      canceled: true,
+      status: "canceled",
+    });
 
     const refreshAccountInfo = vi.fn();
     const refreshAccountRateLimits = vi.fn();
@@ -171,14 +176,19 @@ describe("useAccountSwitching", () => {
   });
 
   it("does not open the auth URL when canceled while login is pending", async () => {
-    let resolveLogin: ((value: { loginId: string; authUrl: string }) => void) | null = null;
+    let resolveLogin:
+      | ((value: { loginId: string; authUrl: string }) => void)
+      | null = null;
     vi.mocked(runCodexLogin).mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveLogin = resolve;
         }),
     );
-    vi.mocked(cancelCodexLogin).mockResolvedValue({ canceled: true, status: "canceled" });
+    vi.mocked(cancelCodexLogin).mockResolvedValue({
+      canceled: true,
+      status: "canceled",
+    });
 
     const refreshAccountInfo = vi.fn();
     const refreshAccountRateLimits = vi.fn();
@@ -203,11 +213,14 @@ describe("useAccountSwitching", () => {
     expect(latest?.accountSwitching).toBe(false);
 
     await act(async () => {
-      resolveLogin?.({ loginId: "login-pending", authUrl: "https://example.com/pending" });
+      resolveLogin?.({
+        loginId: "login-pending",
+        authUrl: "https://example.com/pending",
+      });
       await Promise.resolve();
     });
 
-    expect(openUrl).not.toHaveBeenCalled();
+    expect(openExternalUrl).not.toHaveBeenCalled();
     expect(cancelCodexLogin).toHaveBeenCalledWith("ws-1");
     expect(refreshAccountInfo).not.toHaveBeenCalled();
     expect(refreshAccountRateLimits).not.toHaveBeenCalled();
@@ -239,7 +252,7 @@ describe("useAccountSwitching", () => {
 
     expect(latest?.accountSwitching).toBe(false);
     expect(alertError).not.toHaveBeenCalled();
-    expect(openUrl).not.toHaveBeenCalled();
+    expect(openExternalUrl).not.toHaveBeenCalled();
     expect(cancelCodexLogin).not.toHaveBeenCalled();
 
     await act(async () => {

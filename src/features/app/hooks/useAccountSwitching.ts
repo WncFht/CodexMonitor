@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cancelCodexLogin, runCodexLogin } from "../../../services/tauri";
+import {
+  cancelCodexLogin,
+  openExternalUrl,
+  runCodexLogin,
+} from "../../../services/tauri";
 import { subscribeAppServerEvents } from "../../../services/events";
 import type { AccountSnapshot } from "../../../types";
-import { getAppServerParams, getAppServerRawMethod } from "../../../utils/appServerEvents";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import {
+  getAppServerParams,
+  getAppServerRawMethod,
+} from "../../../utils/appServerEvents";
 
 type UseAccountSwitchingArgs = {
   activeWorkspaceId: string | null;
@@ -46,7 +52,11 @@ export function useAccountSwitching({
 
   const isCodexLoginCanceled = useCallback((error: unknown) => {
     const message =
-      typeof error === "string" ? error : error instanceof Error ? error.message : "";
+      typeof error === "string"
+        ? error
+        : error instanceof Error
+          ? error.message
+          : "";
     const normalized = message.toLowerCase();
     return (
       normalized.includes("codex login canceled") ||
@@ -92,7 +102,8 @@ export function useAccountSwitching({
 
   useEffect(() => {
     const unlisten = subscribeAppServerEvents((payload) => {
-      const matchWorkspaceId = loginWorkspaceIdRef.current ?? activeWorkspaceIdRef.current;
+      const matchWorkspaceId =
+        loginWorkspaceIdRef.current ?? activeWorkspaceIdRef.current;
       if (!matchWorkspaceId || payload.workspace_id !== matchWorkspaceId) {
         return;
       }
@@ -169,7 +180,7 @@ export function useAccountSwitching({
       }
 
       loginIdRef.current = loginId;
-      await openUrl(authUrl);
+      await openExternalUrl(authUrl);
     } catch (error) {
       if (accountSwitchCanceledRef.current || isCodexLoginCanceled(error)) {
         setAccountSwitching(false);
@@ -193,16 +204,14 @@ export function useAccountSwitching({
     } finally {
       // Completion is now driven by app-server events.
     }
-  }, [
-    activeWorkspaceId,
-    accountSwitching,
-    alertError,
-    isCodexLoginCanceled,
-  ]);
+  }, [activeWorkspaceId, accountSwitching, alertError, isCodexLoginCanceled]);
 
   const handleCancelSwitchAccount = useCallback(async () => {
     const targetWorkspaceId = loginWorkspaceIdRef.current ?? activeWorkspaceId;
-    if (!targetWorkspaceId || (!accountSwitchingRef.current && !loginWorkspaceIdRef.current)) {
+    if (
+      !targetWorkspaceId ||
+      (!accountSwitchingRef.current && !loginWorkspaceIdRef.current)
+    ) {
       return;
     }
     accountSwitchCanceledRef.current = true;

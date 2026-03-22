@@ -369,6 +369,19 @@ export async function openWorkspaceIn(
   });
 }
 
+export async function openExternalUrl(url: string): Promise<void> {
+  try {
+    await invoke("open_external_url", { url });
+  } catch (error) {
+    if (isMissingTauriInvokeError(error)) {
+      const { openUrl } = await import("@tauri-apps/plugin-opener");
+      await openUrl(url);
+      return;
+    }
+    throw error;
+  }
+}
+
 export async function getOpenAppIcon(appName: string): Promise<string | null> {
   return invoke<string | null>("get_open_app_icon", { appName });
 }

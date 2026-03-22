@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { openExternalUrl } from "../../../services/tauri";
 import type { UpdateState } from "../hooks/useUpdater";
 import { UpdateToast } from "./UpdateToast";
 
-vi.mock("@tauri-apps/plugin-opener", () => ({
-  openUrl: vi.fn(),
+vi.mock("../../../services/tauri", () => ({
+  openExternalUrl: vi.fn(),
 }));
 
-const openUrlMock = vi.mocked(openUrl);
+const openExternalUrlMock = vi.mocked(openExternalUrl);
 
 describe("UpdateToast", () => {
   beforeEach(() => {
@@ -107,7 +107,8 @@ describe("UpdateToast", () => {
         postUpdateNotice={{
           stage: "loading",
           version: "1.2.3",
-          htmlUrl: "https://github.com/Dimillian/CodexMonitor/releases/tag/v1.2.3",
+          htmlUrl:
+            "https://github.com/Dimillian/CodexMonitor/releases/tag/v1.2.3",
         }}
         onDismissPostUpdateNotice={onDismissPostUpdateNotice}
       />,
@@ -146,7 +147,7 @@ describe("UpdateToast", () => {
     expect(scoped.getByText("Added release notes toast")).toBeTruthy();
 
     fireEvent.click(scoped.getByRole("button", { name: "View on GitHub" }));
-    expect(openUrlMock).toHaveBeenCalledWith(htmlUrl);
+    expect(openExternalUrlMock).toHaveBeenCalledWith(htmlUrl);
 
     fireEvent.click(scoped.getByRole("button", { name: "Dismiss" }));
     expect(onDismissPostUpdateNotice).toHaveBeenCalledTimes(1);
@@ -175,7 +176,7 @@ describe("UpdateToast", () => {
       scoped.getByText("Updated to v1.2.3. Release notes could not be loaded."),
     ).toBeTruthy();
     fireEvent.click(scoped.getByRole("button", { name: "View on GitHub" }));
-    expect(openUrlMock).toHaveBeenCalledWith(htmlUrl);
+    expect(openExternalUrlMock).toHaveBeenCalledWith(htmlUrl);
     expect(scoped.queryByText("A new version is available.")).toBeNull();
   });
 });
