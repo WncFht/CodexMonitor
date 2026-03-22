@@ -1136,7 +1136,7 @@
 }
 
 .thread-row.is-nested .thread-content {
-  gap: 0;
+  gap: 3px;
 }
 
 .thread-headline {
