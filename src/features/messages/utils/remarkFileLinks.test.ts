@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { remarkFileLinks } from "./messageFileLinks";
+import { remarkExternalLinks, remarkFileLinks } from "./messageFileLinks";
 
 type TestNode = {
   type: string;
@@ -10,6 +10,11 @@ type TestNode = {
 
 function runRemarkFileLinks(tree: TestNode) {
   remarkFileLinks()(tree);
+  return tree;
+}
+
+function runRemarkExternalLinks(tree: TestNode) {
+  remarkExternalLinks()(tree);
   return tree;
 }
 
@@ -72,5 +77,35 @@ describe("remarkFileLinks", () => {
       textParagraph("Open vscode://file/C:/repo/src/App.tsx:12 in VS Code."),
     );
     expect(tree.children?.[0]?.children?.map((child) => child.type)).toEqual(["text"]);
+  });
+
+  it("turns custom-scheme URLs into links", () => {
+    const tree = runRemarkExternalLinks(
+      textParagraph("Open vscode://file/C:/repo/src/App.tsx:12 in VS Code."),
+    );
+
+    expect(tree.children?.[0]?.children).toEqual([
+      { type: "text", value: "Open " },
+      {
+        type: "link",
+        url: "vscode://file/C:/repo/src/App.tsx:12",
+        children: [{ type: "text", value: "vscode://file/C:/repo/src/App.tsx:12" }],
+      },
+      { type: "text", value: " in VS Code." },
+    ]);
+  });
+
+  it("keeps inline code untouched when linkifying custom-scheme URLs", () => {
+    const tree = runRemarkExternalLinks({
+      type: "root",
+      children: [
+        {
+          type: "paragraph",
+          children: [{ type: "inlineCode", value: "vscode://file/C:/repo/src/App.tsx:12" }],
+        },
+      ],
+    });
+
+    expect(tree.children?.[0]?.children?.[0]?.type).toBe("inlineCode");
   });
 });

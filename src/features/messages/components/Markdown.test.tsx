@@ -1,10 +1,21 @@
 // @vitest-environment jsdom
 import { cleanup, createEvent, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { expectOpenedFileTarget } from "../test/fileLinkAssertions";
 import { Markdown } from "./Markdown";
 
+vi.mock("@tauri-apps/plugin-opener", () => ({
+  openUrl: vi.fn(),
+}));
+
+const openUrlMock = vi.mocked(openUrl);
+
 describe("Markdown file-like href behavior", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   afterEach(() => {
     cleanup();
   });
@@ -474,7 +485,7 @@ describe("Markdown file-like href behavior", () => {
     expect(container.textContent).toContain("/workspace/settings#L12");
   });
 
-  it("does not linkify Windows file paths embedded in custom URIs", () => {
+  it("opens plain-text custom URIs with the system handler", () => {
     const { container } = render(
       <Markdown
         value="Open vscode://file/C:/repo/src/App.tsx:12 in VS Code."
@@ -482,8 +493,51 @@ describe("Markdown file-like href behavior", () => {
       />,
     );
 
+    const link = screen.getByText("vscode://file/C:/repo/src/App.tsx:12").closest("a");
+    expect(link?.getAttribute("href")).toBe("vscode://file/C:/repo/src/App.tsx:12");
     expect(container.querySelector(".message-file-link")).toBeNull();
-    expect(container.textContent).toContain("vscode://file/C:/repo/src/App.tsx:12");
+
+    fireEvent.click(link as Element);
+    expect(openUrlMock).toHaveBeenCalledWith("vscode://file/C:/repo/src/App.tsx:12");
+  });
+
+  it("opens explicit custom-scheme markdown links with the system handler", () => {
+    render(
+      <Markdown
+        value="[Open in VS Code](vscode://file/home/fanghaotian/Desktop/src/CodexMonitor-fork/src/main.tsx)"
+        className="markdown"
+      />,
+    );
+
+    const link = screen.getByText("Open in VS Code").closest("a");
+    expect(link?.getAttribute("href")).toBe(
+      "vscode://file/home/fanghaotian/Desktop/src/CodexMonitor-fork/src/main.tsx",
+    );
+
+    fireEvent.click(link as Element);
+    expect(openUrlMock).toHaveBeenCalledWith(
+      "vscode://file/home/fanghaotian/Desktop/src/CodexMonitor-fork/src/main.tsx",
+    );
+  });
+
+  it("keeps unsafe javascript links inert", () => {
+    render(
+      <Markdown
+        value="[Bad](javascript:alert('x'))"
+        className="markdown"
+      />,
+    );
+
+    const link = screen.getByText("Bad").closest("a");
+    expect(link?.getAttribute("href")).toBe("");
+
+    const clickEvent = createEvent.click(link as Element, {
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(link as Element, clickEvent);
+    expect(clickEvent.defaultPrevented).toBe(true);
+    expect(openUrlMock).not.toHaveBeenCalled();
   });
 
   it("does not turn workspace review #L anchors in inline code into file links", () => {

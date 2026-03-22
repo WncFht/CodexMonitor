@@ -6,9 +6,11 @@ import { detectContentLanguageTag } from "../../../utils/contentLanguage";
 import {
   describeFileTarget,
   formatParsedFileLocation,
+  isExternalMessageUrl,
   isFileLinkUrl,
   parseFileLinkUrl,
   parseInlineFileTarget,
+  remarkExternalLinks,
   remarkFileLinks,
   resolveMessageFileHref,
   toFileLink,
@@ -429,12 +431,7 @@ export function Markdown({
           </a>
         );
       }
-      const isExternal =
-        url.startsWith("http://") ||
-        url.startsWith("https://") ||
-        url.startsWith("mailto:");
-
-      if (!isExternal) {
+      if (!isExternalMessageUrl(url)) {
         if (url.startsWith("#")) {
           return <a href={href}>{children}</a>;
         }
@@ -492,7 +489,7 @@ export function Markdown({
   return (
     <div className={className} lang={contentLanguage}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkFileLinks]}
+        remarkPlugins={[remarkGfm, remarkExternalLinks, remarkFileLinks]}
         urlTransform={(url) => {
           const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url);
           // Keep file-like hrefs intact before scheme sanitization runs, otherwise
@@ -502,9 +499,7 @@ export function Markdown({
           }
           if (
             isFileLinkUrl(url) ||
-            url.startsWith("http://") ||
-            url.startsWith("https://") ||
-            url.startsWith("mailto:") ||
+            isExternalMessageUrl(url) ||
             url.startsWith("#") ||
             url.startsWith("/") ||
             url.startsWith("./") ||

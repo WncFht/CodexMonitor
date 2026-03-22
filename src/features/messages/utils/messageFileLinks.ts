@@ -29,6 +29,10 @@ type MarkdownNode = {
 };
 
 const FILE_LINK_PROTOCOL = "codex-file:";
+const BLOCKED_EXTERNAL_URL_SCHEMES = new Set(["javascript", "data", "vbscript"]);
+const EXTERNAL_URL_SCHEME_PATTERN = /^([a-zA-Z][a-zA-Z0-9+.-]*):/;
+const EXTERNAL_URL_TEXT_PATTERN =
+  /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"'`{}|\\^[\]]+|mailto:[^\s<>"'`{}|\\^[\]]+)/g;
 const POSIX_OR_RELATIVE_FILE_PATH_PATTERN =
   "(?:\\/[^\\s\\`\"'<>]+|~\\/[^\\s\\`\"'<>]+|\\.{1,2}\\/[^\\s\\`\"'<>]+|[A-Za-z0-9._-]+(?:\\/[A-Za-z0-9._-]+)+)";
 const WINDOWS_ABSOLUTE_FILE_PATH_PATTERN =
@@ -380,6 +384,37 @@ export function parseFileLinkUrl(url: string): ParsedFileLocation | null {
   return decoded ? parseFileLocation(decoded) : null;
 }
 
+export function isExternalMessageUrl(url: string) {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return false;
+  }
+  if (
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("./") ||
+    trimmed.startsWith("../")
+  ) {
+    return false;
+  }
+
+  const match = trimmed.match(EXTERNAL_URL_SCHEME_PATTERN);
+  if (!match) {
+    return false;
+  }
+
+  const scheme = match[1].toLowerCase();
+  if (
+    scheme === FILE_LINK_PROTOCOL.slice(0, -1) ||
+    scheme === "thread" ||
+    BLOCKED_EXTERNAL_URL_SCHEMES.has(scheme)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export function toFileLink(target: ParsedFileLocation | string) {
   const value =
     typeof target === "string" ? normalizeFileLinkPath(target) : formatParsedFileLocation(target);
@@ -431,6 +466,44 @@ function linkifyText(value: string) {
   return hasLink ? nodes : null;
 }
 
+function linkifyExternalUrlText(value: string) {
+  EXTERNAL_URL_TEXT_PATTERN.lastIndex = 0;
+  const nodes: MarkdownNode[] = [];
+  let lastIndex = 0;
+  let hasLink = false;
+
+  for (const match of value.matchAll(EXTERNAL_URL_TEXT_PATTERN)) {
+    const matchIndex = match.index ?? 0;
+    const raw = match[0];
+    if (matchIndex > lastIndex) {
+      nodes.push({ type: "text", value: value.slice(lastIndex, matchIndex) });
+    }
+
+    const { path: url, trailing } = splitTrailingPunctuation(raw);
+    if (url && isExternalMessageUrl(url)) {
+      nodes.push({
+        type: "link",
+        url,
+        children: [{ type: "text", value: url }],
+      });
+      if (trailing) {
+        nodes.push({ type: "text", value: trailing });
+      }
+      hasLink = true;
+    } else {
+      nodes.push({ type: "text", value: raw });
+    }
+
+    lastIndex = matchIndex + raw.length;
+  }
+
+  if (lastIndex < value.length) {
+    nodes.push({ type: "text", value: value.slice(lastIndex) });
+  }
+
+  return hasLink ? nodes : null;
+}
+
 function walk(node: MarkdownNode, parentType?: string) {
   if (!node.children) {
     return;
@@ -457,6 +530,35 @@ function walk(node: MarkdownNode, parentType?: string) {
 export function remarkFileLinks() {
   return (tree: MarkdownNode) => {
     walk(tree);
+  };
+}
+
+export function remarkExternalLinks() {
+  const walkExternalLinks = (node: MarkdownNode, parentType?: string) => {
+    if (!node.children) {
+      return;
+    }
+
+    for (let index = 0; index < node.children.length; index += 1) {
+      const child = node.children[index];
+      if (
+        child.type === "text" &&
+        typeof child.value === "string" &&
+        !isSkippableParent(parentType)
+      ) {
+        const nextNodes = linkifyExternalUrlText(child.value);
+        if (nextNodes) {
+          node.children.splice(index, 1, ...nextNodes);
+          index += nextNodes.length - 1;
+          continue;
+        }
+      }
+      walkExternalLinks(child, child.type);
+    }
+  };
+
+  return (tree: MarkdownNode) => {
+    walkExternalLinks(tree);
   };
 }
 
