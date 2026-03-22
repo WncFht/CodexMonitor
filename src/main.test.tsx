@@ -58,4 +58,10 @@ describe("main sentry bootstrap", () => {
       }),
     );
   });
+
+  it("syncs the document language from the runtime navigator", async () => {
+    await import("./main");
+
+    expect(document.documentElement.lang).toBe(navigator.language);
+  });
 });

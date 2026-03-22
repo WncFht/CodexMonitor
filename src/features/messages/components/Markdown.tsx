@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode, type MouseEvent } from "re
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { detectContentLanguageTag } from "../../../utils/contentLanguage";
 import {
   describeFileTarget,
   formatParsedFileLocation,
@@ -327,6 +328,10 @@ export function Markdown({
   const content = codeBlock
     ? `\`\`\`\n${normalizedValue}\n\`\`\``
     : normalizedValue;
+  const contentLanguage = detectContentLanguageTag(
+    normalizedValue,
+    typeof document === "undefined" ? undefined : document.documentElement.lang,
+  );
   const handleFileLinkClick = (event: React.MouseEvent, path: ParsedFileLocation) => {
     event.preventDefault();
     event.stopPropagation();
@@ -485,7 +490,7 @@ export function Markdown({
   }
 
   return (
-    <div className={className}>
+    <div className={className} lang={contentLanguage}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkFileLinks]}
         urlTransform={(url) => {

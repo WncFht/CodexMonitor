@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import App from "./App";
+import { getPreferredLanguageTag } from "./utils/contentLanguage";
 import { isMobilePlatform } from "./utils/platformPaths";
 
 const sentryDsn =
@@ -20,6 +21,15 @@ Sentry.metrics.count("app_open", 1, {
     platform: "macos",
   },
 });
+
+function syncDocumentLanguage() {
+  if (typeof document === "undefined") {
+    return;
+  }
+  document.documentElement.lang = getPreferredLanguageTag(
+    typeof navigator === "undefined" ? null : navigator,
+  );
+}
 
 function disableMobileZoomGestures() {
   if (!isMobilePlatform() || typeof document === "undefined") {
@@ -86,6 +96,7 @@ function syncMobileViewportHeight() {
   });
 }
 
+syncDocumentLanguage();
 disableMobileZoomGestures();
 syncMobileViewportHeight();
 
