@@ -28,6 +28,32 @@ describe("Markdown file-like href behavior", () => {
     expect(clickEvent.defaultPrevented).toBe(true);
   });
 
+  it("marks Han-script content with a Chinese language tag", () => {
+    const { container } = render(
+      <Markdown
+        value="我在看 codex monitor 的换行问题。"
+        className="markdown"
+      />,
+    );
+
+    expect(container.querySelector(".markdown")?.getAttribute("lang")).toBe(
+      "zh-CN",
+    );
+  });
+
+  it("leaves Latin-only content without an overriding language tag", () => {
+    const { container } = render(
+      <Markdown
+        value="Review the wrapping issue in Codex Monitor."
+        className="markdown"
+      />,
+    );
+
+    expect(container.querySelector(".markdown")?.hasAttribute("lang")).toBe(
+      false,
+    );
+  });
+
   it("intercepts file-like href clicks when a file opener is provided", () => {
     const onOpenFileLink = vi.fn();
     render(
