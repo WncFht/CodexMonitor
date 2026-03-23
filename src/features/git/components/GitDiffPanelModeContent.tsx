@@ -1,7 +1,10 @@
-import type { GitHubIssue, GitHubPullRequest, GitLogEntry } from "../../../types";
+import type {
+  GitHubIssue,
+  GitHubPullRequest,
+  GitLogEntry,
+} from "../../../types";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import ArrowLeftRight from "lucide-react/dist/esm/icons/arrow-left-right";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
@@ -9,6 +12,7 @@ import Download from "lucide-react/dist/esm/icons/download";
 import RotateCcw from "lucide-react/dist/esm/icons/rotate-ccw";
 import RotateCw from "lucide-react/dist/esm/icons/rotate-cw";
 import Upload from "lucide-react/dist/esm/icons/upload";
+import { openExternalUrl } from "../../../services/tauri";
 import { formatRelativeTime } from "../../../utils/time";
 import {
   MagicSparkleIcon,
@@ -100,7 +104,9 @@ export function GitPanelModeStatus({
     <>
       <div className="diff-status diff-status-issues">
         <span>GitHub pull requests</span>
-        {pullRequestsLoading && <span className="git-panel-spinner" aria-hidden />}
+        {pullRequestsLoading && (
+          <span className="git-panel-spinner" aria-hidden />
+        )}
       </div>
       <div className="git-log-sync">
         <span>{pullRequestsTotal} open</span>
@@ -116,7 +122,12 @@ type GitBranchRowProps = {
   fetchLoading: boolean;
 };
 
-export function GitBranchRow({ mode, branchName, onFetch, fetchLoading }: GitBranchRowProps) {
+export function GitBranchRow({
+  mode,
+  branchName,
+  onFetch,
+  fetchLoading,
+}: GitBranchRowProps) {
   if (mode !== "diff" && mode !== "perFile" && mode !== "log") {
     return null;
   }
@@ -146,45 +157,45 @@ export function GitBranchRow({ mode, branchName, onFetch, fetchLoading }: GitBra
 }
 
 type GitRootCurrentPathProps = {
-    mode: GitMode;
-    hasGitRoot: boolean;
-    gitRoot: string | null;
-    onScanGitRoots?: () => void;
-    gitRootScanLoading: boolean;
+  mode: GitMode;
+  hasGitRoot: boolean;
+  gitRoot: string | null;
+  onScanGitRoots?: () => void;
+  gitRootScanLoading: boolean;
 };
 
 export function GitRootCurrentPath({
-    mode,
-    hasGitRoot,
-    gitRoot,
-    onScanGitRoots,
-    gitRootScanLoading,
+  mode,
+  hasGitRoot,
+  gitRoot,
+  onScanGitRoots,
+  gitRootScanLoading,
 }: GitRootCurrentPathProps) {
-    if (mode === "issues" || !hasGitRoot) {
-        return null;
-    }
+  if (mode === "issues" || !hasGitRoot) {
+    return null;
+  }
 
-    return (
-        <div className="git-root-current">
-            <div className="git-root-current-main">
-                <span className="git-root-label">Repository root</span>
-                <span className="git-root-path" title={gitRoot ?? ""}>
-                    {gitRoot}
-                </span>
-            </div>
-            {onScanGitRoots && (
-                <button
-                    type="button"
-                    className="ghost git-root-button git-root-button--icon"
-                    onClick={onScanGitRoots}
-                    disabled={gitRootScanLoading}
-                >
-                    <ArrowLeftRight className="git-root-button-icon" aria-hidden />
-                    Change
-                </button>
-            )}
-        </div>
-    );
+  return (
+    <div className="git-root-current">
+      <div className="git-root-current-main">
+        <span className="git-root-label">Repository root</span>
+        <span className="git-root-path" title={gitRoot ?? ""}>
+          {gitRoot}
+        </span>
+      </div>
+      {onScanGitRoots && (
+        <button
+          type="button"
+          className="ghost git-root-button git-root-button--icon"
+          onClick={onScanGitRoots}
+          disabled={gitRootScanLoading}
+        >
+          <ArrowLeftRight className="git-root-button-icon" aria-hidden />
+          Change
+        </button>
+      )}
+    </div>
+  );
 }
 
 type GitPerFileModeContentProps = {
@@ -255,7 +266,11 @@ export function GitPerFileModeContent({
               onClick={() => toggleGroup(group.path)}
             >
               <span className="per-file-group-chevron" aria-hidden>
-                {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {isExpanded ? (
+                  <ChevronDown size={12} />
+                ) : (
+                  <ChevronRight size={12} />
+                )}
               </span>
               <span className="per-file-group-path" title={group.path}>
                 {fileName || group.path}
@@ -275,7 +290,10 @@ export function GitPerFileModeContent({
                       className={`per-file-edit-row ${isActive ? "active" : ""}`}
                       onClick={() => onSelectFile?.(edit.id)}
                     >
-                      <span className="per-file-edit-status" data-status={edit.status}>
+                      <span
+                        className="per-file-edit-status"
+                        data-status={edit.status}
+                      >
                         {edit.status}
                       </span>
                       <span className="per-file-edit-label">{edit.label}</span>
@@ -307,584 +325,608 @@ export function GitPerFileModeContent({
 }
 
 type GitDiffModeContentProps = {
-    error: string | null | undefined;
-    showGitRootPanel: boolean;
-    onScanGitRoots?: () => void;
-    gitRootScanLoading: boolean;
-    gitRootScanDepth: number;
-    onGitRootScanDepthChange?: (depth: number) => void;
-    onPickGitRoot?: () => void | Promise<void>;
-    onInitGitRepo?: () => void | Promise<void>;
-    initGitRepoLoading: boolean;
-    hasGitRoot: boolean;
-    onClearGitRoot?: () => void;
-    gitRootScanError: string | null | undefined;
-    gitRootScanHasScanned: boolean;
-    gitRootCandidates: string[];
-    gitRoot: string | null;
-    onSelectGitRoot?: (path: string) => void;
-    showGenerateCommitMessage: boolean;
-    showApplyWorktree: boolean;
-    commitMessage: string;
-    onCommitMessageChange?: (value: string) => void;
-    commitMessageLoading: boolean;
-    canGenerateCommitMessage: boolean;
-    onGenerateCommitMessage?: () => void | Promise<void>;
-    worktreeApplyTitle: string | null;
-    worktreeApplyLoading: boolean;
-    worktreeApplySuccess: boolean;
-    onApplyWorktreeChanges?: () => void | Promise<void>;
-    stagedFiles: DiffFile[];
-    unstagedFiles: DiffFile[];
-    commitLoading: boolean;
-    onCommit?: () => void | Promise<void>;
-    commitsAhead: number;
-    commitsBehind: number;
-    onPull?: () => void | Promise<void>;
-    pullLoading: boolean;
-    onPush?: () => void | Promise<void>;
-    pushLoading: boolean;
-    onSync?: () => void | Promise<void>;
-    syncLoading: boolean;
-    onStageAllChanges?: () => void | Promise<void>;
-    onStageFile?: (path: string) => Promise<void> | void;
-    onUnstageFile?: (path: string) => Promise<void> | void;
-    onDiscardFile?: (path: string) => Promise<void> | void;
-    onDiscardFiles?: (paths: string[]) => Promise<void> | void;
-    onReviewUncommittedChanges?: () => void | Promise<void>;
-    selectedFiles: Set<string>;
-    selectedPath: string | null;
-    onSelectFile?: (path: string) => void;
-    onFileClick: (
-        event: ReactMouseEvent<HTMLDivElement>,
-        path: string,
-        section: "staged" | "unstaged",
-    ) => void;
-    onShowFileMenu: (
-        event: ReactMouseEvent<HTMLDivElement>,
-        path: string,
-        section: "staged" | "unstaged",
-    ) => void;
-    onDiffListClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  error: string | null | undefined;
+  showGitRootPanel: boolean;
+  onScanGitRoots?: () => void;
+  gitRootScanLoading: boolean;
+  gitRootScanDepth: number;
+  onGitRootScanDepthChange?: (depth: number) => void;
+  onPickGitRoot?: () => void | Promise<void>;
+  onInitGitRepo?: () => void | Promise<void>;
+  initGitRepoLoading: boolean;
+  hasGitRoot: boolean;
+  onClearGitRoot?: () => void;
+  gitRootScanError: string | null | undefined;
+  gitRootScanHasScanned: boolean;
+  gitRootCandidates: string[];
+  gitRoot: string | null;
+  onSelectGitRoot?: (path: string) => void;
+  showGenerateCommitMessage: boolean;
+  showApplyWorktree: boolean;
+  commitMessage: string;
+  onCommitMessageChange?: (value: string) => void;
+  commitMessageLoading: boolean;
+  canGenerateCommitMessage: boolean;
+  onGenerateCommitMessage?: () => void | Promise<void>;
+  worktreeApplyTitle: string | null;
+  worktreeApplyLoading: boolean;
+  worktreeApplySuccess: boolean;
+  onApplyWorktreeChanges?: () => void | Promise<void>;
+  stagedFiles: DiffFile[];
+  unstagedFiles: DiffFile[];
+  commitLoading: boolean;
+  onCommit?: () => void | Promise<void>;
+  commitsAhead: number;
+  commitsBehind: number;
+  onPull?: () => void | Promise<void>;
+  pullLoading: boolean;
+  onPush?: () => void | Promise<void>;
+  pushLoading: boolean;
+  onSync?: () => void | Promise<void>;
+  syncLoading: boolean;
+  onStageAllChanges?: () => void | Promise<void>;
+  onStageFile?: (path: string) => Promise<void> | void;
+  onUnstageFile?: (path: string) => Promise<void> | void;
+  onDiscardFile?: (path: string) => Promise<void> | void;
+  onDiscardFiles?: (paths: string[]) => Promise<void> | void;
+  onReviewUncommittedChanges?: () => void | Promise<void>;
+  selectedFiles: Set<string>;
+  selectedPath: string | null;
+  onSelectFile?: (path: string) => void;
+  onFileClick: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    path: string,
+    section: "staged" | "unstaged",
+  ) => void;
+  onShowFileMenu: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    path: string,
+    section: "staged" | "unstaged",
+  ) => void;
+  onDiffListClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
 };
 
 export function GitDiffModeContent({
-    error,
-    showGitRootPanel,
-    onScanGitRoots,
-    gitRootScanLoading,
-    gitRootScanDepth,
-    onGitRootScanDepthChange,
-    onPickGitRoot,
-    onInitGitRepo,
-    initGitRepoLoading,
-    hasGitRoot,
-    onClearGitRoot,
-    gitRootScanError,
-    gitRootScanHasScanned,
-    gitRootCandidates,
-    gitRoot,
-    onSelectGitRoot,
-    showGenerateCommitMessage,
-    showApplyWorktree,
-    commitMessage,
-    onCommitMessageChange,
-    commitMessageLoading,
-    canGenerateCommitMessage,
-    onGenerateCommitMessage,
-    worktreeApplyTitle,
-    worktreeApplyLoading,
-    worktreeApplySuccess,
-    onApplyWorktreeChanges,
-    stagedFiles,
-    unstagedFiles,
-    commitLoading,
-    onCommit,
-    commitsAhead,
-    commitsBehind,
-    onPull,
-    pullLoading,
-    onPush,
-    pushLoading,
-    onSync,
-    syncLoading,
-    onStageAllChanges,
-    onStageFile,
-    onUnstageFile,
-    onDiscardFile,
-    onDiscardFiles,
-    onReviewUncommittedChanges,
-    selectedFiles,
-    selectedPath,
-    onSelectFile,
-    onFileClick,
-    onShowFileMenu,
-    onDiffListClick,
+  error,
+  showGitRootPanel,
+  onScanGitRoots,
+  gitRootScanLoading,
+  gitRootScanDepth,
+  onGitRootScanDepthChange,
+  onPickGitRoot,
+  onInitGitRepo,
+  initGitRepoLoading,
+  hasGitRoot,
+  onClearGitRoot,
+  gitRootScanError,
+  gitRootScanHasScanned,
+  gitRootCandidates,
+  gitRoot,
+  onSelectGitRoot,
+  showGenerateCommitMessage,
+  showApplyWorktree,
+  commitMessage,
+  onCommitMessageChange,
+  commitMessageLoading,
+  canGenerateCommitMessage,
+  onGenerateCommitMessage,
+  worktreeApplyTitle,
+  worktreeApplyLoading,
+  worktreeApplySuccess,
+  onApplyWorktreeChanges,
+  stagedFiles,
+  unstagedFiles,
+  commitLoading,
+  onCommit,
+  commitsAhead,
+  commitsBehind,
+  onPull,
+  pullLoading,
+  onPush,
+  pushLoading,
+  onSync,
+  syncLoading,
+  onStageAllChanges,
+  onStageFile,
+  onUnstageFile,
+  onDiscardFile,
+  onDiscardFiles,
+  onReviewUncommittedChanges,
+  selectedFiles,
+  selectedPath,
+  onSelectFile,
+  onFileClick,
+  onShowFileMenu,
+  onDiffListClick,
 }: GitDiffModeContentProps) {
-    const normalizedGitRoot = normalizeRootPath(gitRoot);
-    const missingRepo = isMissingRepo(error);
-    const gitRootNotFound = isGitRootNotFound(error);
-    const showInitGitRepo = Boolean(onInitGitRepo) && missingRepo && !gitRootNotFound;
-    const gitRootTitle = gitRootNotFound
-        ? "Git root folder not found."
-        : missingRepo
-            ? "This workspace isn't a Git repository yet."
-            : "Choose a repo for this workspace.";
-    const generateCommitMessageTooltip = "Generate commit message";
-    const showWorktreeApplyInUnstaged = showApplyWorktree && unstagedFiles.length > 0;
-    const showWorktreeApplyInStaged =
-        showApplyWorktree && unstagedFiles.length === 0 && stagedFiles.length > 0;
+  const normalizedGitRoot = normalizeRootPath(gitRoot);
+  const missingRepo = isMissingRepo(error);
+  const gitRootNotFound = isGitRootNotFound(error);
+  const showInitGitRepo =
+    Boolean(onInitGitRepo) && missingRepo && !gitRootNotFound;
+  const gitRootTitle = gitRootNotFound
+    ? "Git root folder not found."
+    : missingRepo
+      ? "This workspace isn't a Git repository yet."
+      : "Choose a repo for this workspace.";
+  const generateCommitMessageTooltip = "Generate commit message";
+  const showWorktreeApplyInUnstaged =
+    showApplyWorktree && unstagedFiles.length > 0;
+  const showWorktreeApplyInStaged =
+    showApplyWorktree && unstagedFiles.length === 0 && stagedFiles.length > 0;
 
-    return (
-        <div className="diff-list" onClick={onDiffListClick}>
-            {showGitRootPanel && (
-                <div className="git-root-panel">
-                    <div className="git-root-title">{gitRootTitle}</div>
-                    {showInitGitRepo && (
-                        <div className="git-root-primary-action">
-                            <button
-                                type="button"
-                                className="primary git-root-button"
-                                onClick={() => {
-                                    void onInitGitRepo?.();
-                                }}
-                                disabled={initGitRepoLoading || gitRootScanLoading}
-                            >
-                                {initGitRepoLoading ? "Initializing..." : "Initialize Git"}
-                            </button>
-                        </div>
-                    )}
-                    <div className="git-root-actions">
-                        <button
-                            type="button"
-                            className="ghost git-root-button"
-                            onClick={onScanGitRoots}
-                            disabled={!onScanGitRoots || gitRootScanLoading || initGitRepoLoading}
-                        >
-                            Scan workspace
-                        </button>
-                        <label className="git-root-depth">
-                            <span>Depth</span>
-                            <select
-                                className="git-root-select"
-                                value={gitRootScanDepth}
-                                onChange={(event) => {
-                                    const value = Number(event.target.value);
-                                    if (!Number.isNaN(value)) {
-                                        onGitRootScanDepthChange?.(value);
-                                    }
-                                }}
-                                disabled={gitRootScanLoading || initGitRepoLoading}
-                            >
-                                {DEPTH_OPTIONS.map((depth) => (
-                                    <option key={depth} value={depth}>
-                                        {depth}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        {onPickGitRoot && (
-                            <button
-                                type="button"
-                                className="ghost git-root-button"
-                                onClick={() => {
-                                    void onPickGitRoot();
-                                }}
-                                disabled={gitRootScanLoading || initGitRepoLoading}
-                            >
-                                Pick folder
-                            </button>
-                        )}
-                        {hasGitRoot && onClearGitRoot && (
-                            <button
-                                type="button"
-                                className="ghost git-root-button"
-                                onClick={onClearGitRoot}
-                                disabled={gitRootScanLoading || initGitRepoLoading}
-                            >
-                                Use workspace root
-                            </button>
-                        )}
-                    </div>
-                    {gitRootScanLoading && <div className="diff-empty">Scanning for repositories...</div>}
-                    {!gitRootScanLoading &&
-                        !gitRootScanError &&
-                        gitRootScanHasScanned &&
-                        gitRootCandidates.length === 0 && <div className="diff-empty">No repositories found.</div>}
-                    {gitRootCandidates.length > 0 && (
-                        <div className="git-root-list">
-                            {gitRootCandidates.map((path) => {
-                                const normalizedPath = normalizeRootPath(path);
-                                const isActive = normalizedGitRoot && normalizedGitRoot === normalizedPath;
-                                return (
-                                    <button
-                                        key={path}
-                                        type="button"
-                                        className={`git-root-item ${isActive ? "active" : ""}`}
-                                        onClick={() => onSelectGitRoot?.(path)}
-                                    >
-                                        <span className="git-root-path">{path}</span>
-                                        {isActive && <span className="git-root-tag">Active</span>}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+  return (
+    <div className="diff-list" onClick={onDiffListClick}>
+      {showGitRootPanel && (
+        <div className="git-root-panel">
+          <div className="git-root-title">{gitRootTitle}</div>
+          {showInitGitRepo && (
+            <div className="git-root-primary-action">
+              <button
+                type="button"
+                className="primary git-root-button"
+                onClick={() => {
+                  void onInitGitRepo?.();
+                }}
+                disabled={initGitRepoLoading || gitRootScanLoading}
+              >
+                {initGitRepoLoading ? "Initializing..." : "Initialize Git"}
+              </button>
+            </div>
+          )}
+          <div className="git-root-actions">
+            <button
+              type="button"
+              className="ghost git-root-button"
+              onClick={onScanGitRoots}
+              disabled={
+                !onScanGitRoots || gitRootScanLoading || initGitRepoLoading
+              }
+            >
+              Scan workspace
+            </button>
+            <label className="git-root-depth">
+              <span>Depth</span>
+              <select
+                className="git-root-select"
+                value={gitRootScanDepth}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (!Number.isNaN(value)) {
+                    onGitRootScanDepthChange?.(value);
+                  }
+                }}
+                disabled={gitRootScanLoading || initGitRepoLoading}
+              >
+                {DEPTH_OPTIONS.map((depth) => (
+                  <option key={depth} value={depth}>
+                    {depth}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {onPickGitRoot && (
+              <button
+                type="button"
+                className="ghost git-root-button"
+                onClick={() => {
+                  void onPickGitRoot();
+                }}
+                disabled={gitRootScanLoading || initGitRepoLoading}
+              >
+                Pick folder
+              </button>
             )}
-            {showGenerateCommitMessage && (
-                <div className="commit-message-section">
-                    <div className="commit-message-input-wrapper">
-                        <textarea
-                            className="commit-message-input"
-                            placeholder="Commit message..."
-                            value={commitMessage}
-                            onChange={(event) => onCommitMessageChange?.(event.target.value)}
-                            disabled={commitMessageLoading}
-                            rows={2}
-                        />
-                        <button
-                            type="button"
-                            className="commit-message-generate-button diff-row-action ds-tooltip-trigger"
-                            onClick={() => {
-                                if (!canGenerateCommitMessage) {
-                                    return;
-                                }
-                                void onGenerateCommitMessage?.();
-                            }}
-                            disabled={commitMessageLoading || !canGenerateCommitMessage}
-                            title={generateCommitMessageTooltip}
-                            data-tooltip={generateCommitMessageTooltip}
-                            data-tooltip-placement="bottom"
-                            data-tooltip-align="end"
-                            aria-label="Generate commit message"
-                        >
-                            {commitMessageLoading ? (
-                                <MagicSparkleLoaderIcon className="commit-message-loader" />
-                            ) : (
-                                <MagicSparkleIcon />
-                            )}
-                        </button>
-                    </div>
-                    <CommitButton
-                        commitMessage={commitMessage}
-                        hasStagedFiles={stagedFiles.length > 0}
-                        hasUnstagedFiles={unstagedFiles.length > 0}
-                        commitLoading={commitLoading}
-                        onCommit={onCommit}
-                    />
-                </div>
+            {hasGitRoot && onClearGitRoot && (
+              <button
+                type="button"
+                className="ghost git-root-button"
+                onClick={onClearGitRoot}
+                disabled={gitRootScanLoading || initGitRepoLoading}
+              >
+                Use workspace root
+              </button>
             )}
-            {(commitsAhead > 0 || commitsBehind > 0) && !stagedFiles.length && (
-                <div className="push-section">
-                    <div className="push-sync-buttons">
-                        {commitsBehind > 0 && (
-                            <button
-                                type="button"
-                                className="push-button-secondary"
-                                onClick={() => void onPull?.()}
-                                disabled={!onPull || pullLoading || syncLoading}
-                                title={`Pull ${commitsBehind} commit${commitsBehind > 1 ? "s" : ""}`}
-                            >
-                                {pullLoading ? (
-                                    <span className="commit-button-spinner" aria-hidden />
-                                ) : (
-                                    <Download size={14} aria-hidden />
-                                )}
-                                <span>{pullLoading ? "Pulling..." : "Pull"}</span>
-                                <span className="push-count">{commitsBehind}</span>
-                            </button>
-                        )}
-                        {commitsAhead > 0 && (
-                            <button
-                                type="button"
-                                className="push-button"
-                                onClick={() => void onPush?.()}
-                                disabled={!onPush || pushLoading || commitsBehind > 0}
-                                title={
-                                    commitsBehind > 0
-                                        ? "Remote is ahead. Pull first, or use Sync."
-                                        : `Push ${commitsAhead} commit${commitsAhead > 1 ? "s" : ""}`
-                                }
-                            >
-                                {pushLoading ? (
-                                    <span className="commit-button-spinner" aria-hidden />
-                                ) : (
-                                    <Upload size={14} aria-hidden />
-                                )}
-                                <span>Push</span>
-                                <span className="push-count">{commitsAhead}</span>
-                            </button>
-                        )}
-                    </div>
-                    {commitsAhead > 0 && commitsBehind > 0 && (
-                        <button
-                            type="button"
-                            className="push-button-secondary"
-                            onClick={() => void onSync?.()}
-                            disabled={!onSync || syncLoading || pullLoading}
-                            title="Pull latest changes and push your local commits"
-                        >
-                            {syncLoading ? (
-                                <span className="commit-button-spinner" aria-hidden />
-                            ) : (
-                                <RotateCcw size={14} aria-hidden />
-                            )}
-                            <span>{syncLoading ? "Syncing..." : "Sync (pull then push)"}</span>
-                        </button>
-                    )}
-                </div>
+          </div>
+          {gitRootScanLoading && (
+            <div className="diff-empty">Scanning for repositories...</div>
+          )}
+          {!gitRootScanLoading &&
+            !gitRootScanError &&
+            gitRootScanHasScanned &&
+            gitRootCandidates.length === 0 && (
+              <div className="diff-empty">No repositories found.</div>
             )}
-            {!error &&
-                !stagedFiles.length &&
-                !unstagedFiles.length &&
-                commitsAhead === 0 &&
-                commitsBehind === 0 && <div className="diff-empty">No changes detected.</div>}
-            {(stagedFiles.length > 0 || unstagedFiles.length > 0) && (
-                <>
-                    {stagedFiles.length > 0 && (
-                        <DiffSection
-                            title="Staged"
-                            files={stagedFiles}
-                            section="staged"
-                            selectedFiles={selectedFiles}
-                            selectedPath={selectedPath}
-                            onSelectFile={onSelectFile}
-                            onUnstageFile={onUnstageFile}
-                            onDiscardFile={onDiscardFile}
-                            onDiscardFiles={onDiscardFiles}
-                            showWorktreeApplyAction={showWorktreeApplyInStaged}
-                            worktreeApplyTitle={worktreeApplyTitle}
-                            worktreeApplyLoading={worktreeApplyLoading}
-                            worktreeApplySuccess={worktreeApplySuccess}
-                            onApplyWorktreeChanges={onApplyWorktreeChanges}
-                            onFileClick={onFileClick}
-                            onShowFileMenu={onShowFileMenu}
-                        />
-                    )}
-                    {unstagedFiles.length > 0 && (
-                        <DiffSection
-                            title="Unstaged"
-                            files={unstagedFiles}
-                            section="unstaged"
-                            selectedFiles={selectedFiles}
-                            selectedPath={selectedPath}
-                            onSelectFile={onSelectFile}
-                            onStageAllChanges={onStageAllChanges}
-                            onStageFile={onStageFile}
-                            onDiscardFile={onDiscardFile}
-                            onDiscardFiles={onDiscardFiles}
-                            onReviewUncommittedChanges={onReviewUncommittedChanges}
-                            showWorktreeApplyAction={showWorktreeApplyInUnstaged}
-                            worktreeApplyTitle={worktreeApplyTitle}
-                            worktreeApplyLoading={worktreeApplyLoading}
-                            worktreeApplySuccess={worktreeApplySuccess}
-                            onApplyWorktreeChanges={onApplyWorktreeChanges}
-                            onFileClick={onFileClick}
-                            onShowFileMenu={onShowFileMenu}
-                        />
-                    )}
-                </>
-            )}
+          {gitRootCandidates.length > 0 && (
+            <div className="git-root-list">
+              {gitRootCandidates.map((path) => {
+                const normalizedPath = normalizeRootPath(path);
+                const isActive =
+                  normalizedGitRoot && normalizedGitRoot === normalizedPath;
+                return (
+                  <button
+                    key={path}
+                    type="button"
+                    className={`git-root-item ${isActive ? "active" : ""}`}
+                    onClick={() => onSelectGitRoot?.(path)}
+                  >
+                    <span className="git-root-path">{path}</span>
+                    {isActive && <span className="git-root-tag">Active</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-    );
+      )}
+      {showGenerateCommitMessage && (
+        <div className="commit-message-section">
+          <div className="commit-message-input-wrapper">
+            <textarea
+              className="commit-message-input"
+              placeholder="Commit message..."
+              value={commitMessage}
+              onChange={(event) => onCommitMessageChange?.(event.target.value)}
+              disabled={commitMessageLoading}
+              rows={2}
+            />
+            <button
+              type="button"
+              className="commit-message-generate-button diff-row-action ds-tooltip-trigger"
+              onClick={() => {
+                if (!canGenerateCommitMessage) {
+                  return;
+                }
+                void onGenerateCommitMessage?.();
+              }}
+              disabled={commitMessageLoading || !canGenerateCommitMessage}
+              title={generateCommitMessageTooltip}
+              data-tooltip={generateCommitMessageTooltip}
+              data-tooltip-placement="bottom"
+              data-tooltip-align="end"
+              aria-label="Generate commit message"
+            >
+              {commitMessageLoading ? (
+                <MagicSparkleLoaderIcon className="commit-message-loader" />
+              ) : (
+                <MagicSparkleIcon />
+              )}
+            </button>
+          </div>
+          <CommitButton
+            commitMessage={commitMessage}
+            hasStagedFiles={stagedFiles.length > 0}
+            hasUnstagedFiles={unstagedFiles.length > 0}
+            commitLoading={commitLoading}
+            onCommit={onCommit}
+          />
+        </div>
+      )}
+      {(commitsAhead > 0 || commitsBehind > 0) && !stagedFiles.length && (
+        <div className="push-section">
+          <div className="push-sync-buttons">
+            {commitsBehind > 0 && (
+              <button
+                type="button"
+                className="push-button-secondary"
+                onClick={() => void onPull?.()}
+                disabled={!onPull || pullLoading || syncLoading}
+                title={`Pull ${commitsBehind} commit${commitsBehind > 1 ? "s" : ""}`}
+              >
+                {pullLoading ? (
+                  <span className="commit-button-spinner" aria-hidden />
+                ) : (
+                  <Download size={14} aria-hidden />
+                )}
+                <span>{pullLoading ? "Pulling..." : "Pull"}</span>
+                <span className="push-count">{commitsBehind}</span>
+              </button>
+            )}
+            {commitsAhead > 0 && (
+              <button
+                type="button"
+                className="push-button"
+                onClick={() => void onPush?.()}
+                disabled={!onPush || pushLoading || commitsBehind > 0}
+                title={
+                  commitsBehind > 0
+                    ? "Remote is ahead. Pull first, or use Sync."
+                    : `Push ${commitsAhead} commit${commitsAhead > 1 ? "s" : ""}`
+                }
+              >
+                {pushLoading ? (
+                  <span className="commit-button-spinner" aria-hidden />
+                ) : (
+                  <Upload size={14} aria-hidden />
+                )}
+                <span>Push</span>
+                <span className="push-count">{commitsAhead}</span>
+              </button>
+            )}
+          </div>
+          {commitsAhead > 0 && commitsBehind > 0 && (
+            <button
+              type="button"
+              className="push-button-secondary"
+              onClick={() => void onSync?.()}
+              disabled={!onSync || syncLoading || pullLoading}
+              title="Pull latest changes and push your local commits"
+            >
+              {syncLoading ? (
+                <span className="commit-button-spinner" aria-hidden />
+              ) : (
+                <RotateCcw size={14} aria-hidden />
+              )}
+              <span>
+                {syncLoading ? "Syncing..." : "Sync (pull then push)"}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+      {!error &&
+        !stagedFiles.length &&
+        !unstagedFiles.length &&
+        commitsAhead === 0 &&
+        commitsBehind === 0 && (
+          <div className="diff-empty">No changes detected.</div>
+        )}
+      {(stagedFiles.length > 0 || unstagedFiles.length > 0) && (
+        <>
+          {stagedFiles.length > 0 && (
+            <DiffSection
+              title="Staged"
+              files={stagedFiles}
+              section="staged"
+              selectedFiles={selectedFiles}
+              selectedPath={selectedPath}
+              onSelectFile={onSelectFile}
+              onUnstageFile={onUnstageFile}
+              onDiscardFile={onDiscardFile}
+              onDiscardFiles={onDiscardFiles}
+              showWorktreeApplyAction={showWorktreeApplyInStaged}
+              worktreeApplyTitle={worktreeApplyTitle}
+              worktreeApplyLoading={worktreeApplyLoading}
+              worktreeApplySuccess={worktreeApplySuccess}
+              onApplyWorktreeChanges={onApplyWorktreeChanges}
+              onFileClick={onFileClick}
+              onShowFileMenu={onShowFileMenu}
+            />
+          )}
+          {unstagedFiles.length > 0 && (
+            <DiffSection
+              title="Unstaged"
+              files={unstagedFiles}
+              section="unstaged"
+              selectedFiles={selectedFiles}
+              selectedPath={selectedPath}
+              onSelectFile={onSelectFile}
+              onStageAllChanges={onStageAllChanges}
+              onStageFile={onStageFile}
+              onDiscardFile={onDiscardFile}
+              onDiscardFiles={onDiscardFiles}
+              onReviewUncommittedChanges={onReviewUncommittedChanges}
+              showWorktreeApplyAction={showWorktreeApplyInUnstaged}
+              worktreeApplyTitle={worktreeApplyTitle}
+              worktreeApplyLoading={worktreeApplyLoading}
+              worktreeApplySuccess={worktreeApplySuccess}
+              onApplyWorktreeChanges={onApplyWorktreeChanges}
+              onFileClick={onFileClick}
+              onShowFileMenu={onShowFileMenu}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 type GitLogModeContentProps = {
-    logError: string | null | undefined;
-    logLoading: boolean;
-    logEntries: GitLogEntry[];
-    showAheadSection: boolean;
-    showBehindSection: boolean;
-    logAheadEntries: GitLogEntry[];
-    logBehindEntries: GitLogEntry[];
-    selectedCommitSha: string | null;
-    onSelectCommit?: (entry: GitLogEntry) => void;
-    onShowLogMenu: (event: ReactMouseEvent<HTMLDivElement>, entry: GitLogEntry) => void;
+  logError: string | null | undefined;
+  logLoading: boolean;
+  logEntries: GitLogEntry[];
+  showAheadSection: boolean;
+  showBehindSection: boolean;
+  logAheadEntries: GitLogEntry[];
+  logBehindEntries: GitLogEntry[];
+  selectedCommitSha: string | null;
+  onSelectCommit?: (entry: GitLogEntry) => void;
+  onShowLogMenu: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    entry: GitLogEntry,
+  ) => void;
 };
 
 export function GitLogModeContent({
-    logError,
-    logLoading,
-    logEntries,
-    showAheadSection,
-    showBehindSection,
-    logAheadEntries,
-    logBehindEntries,
-    selectedCommitSha,
-    onSelectCommit,
-    onShowLogMenu,
+  logError,
+  logLoading,
+  logEntries,
+  showAheadSection,
+  showBehindSection,
+  logAheadEntries,
+  logBehindEntries,
+  selectedCommitSha,
+  onSelectCommit,
+  onShowLogMenu,
 }: GitLogModeContentProps) {
-    return (
-        <div className="git-log-list">
-            {!logError && logLoading && <div className="diff-viewer-loading">Loading commits...</div>}
-            {!logError &&
-                !logLoading &&
-                !logEntries.length &&
-                !showAheadSection &&
-                !showBehindSection && <div className="diff-empty">No commits yet.</div>}
-            {showAheadSection && (
-                <div className="git-log-section">
-                    <div className="git-log-section-title">To push</div>
-                    <div className="git-log-section-list">
-                        {logAheadEntries.map((entry) => {
-                            const isSelected = selectedCommitSha === entry.sha;
-                            return (
-                                <GitLogEntryRow
-                                    key={entry.sha}
-                                    entry={entry}
-                                    isSelected={isSelected}
-                                    compact
-                                    onSelect={onSelectCommit}
-                                    onContextMenu={(event) => onShowLogMenu(event, entry)}
-                                />
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-            {showBehindSection && (
-                <div className="git-log-section">
-                    <div className="git-log-section-title">To pull</div>
-                    <div className="git-log-section-list">
-                        {logBehindEntries.map((entry) => {
-                            const isSelected = selectedCommitSha === entry.sha;
-                            return (
-                                <GitLogEntryRow
-                                    key={entry.sha}
-                                    entry={entry}
-                                    isSelected={isSelected}
-                                    compact
-                                    onSelect={onSelectCommit}
-                                    onContextMenu={(event) => onShowLogMenu(event, entry)}
-                                />
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-            {(logEntries.length > 0 || logLoading) && (
-                <div className="git-log-section">
-                    <div className="git-log-section-title">Recent commits</div>
-                    <div className="git-log-section-list">
-                        {logEntries.map((entry) => {
-                            const isSelected = selectedCommitSha === entry.sha;
-                            return (
-                                <GitLogEntryRow
-                                    key={entry.sha}
-                                    entry={entry}
-                                    isSelected={isSelected}
-                                    onSelect={onSelectCommit}
-                                    onContextMenu={(event) => onShowLogMenu(event, entry)}
-                                />
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="git-log-list">
+      {!logError && logLoading && (
+        <div className="diff-viewer-loading">Loading commits...</div>
+      )}
+      {!logError &&
+        !logLoading &&
+        !logEntries.length &&
+        !showAheadSection &&
+        !showBehindSection && <div className="diff-empty">No commits yet.</div>}
+      {showAheadSection && (
+        <div className="git-log-section">
+          <div className="git-log-section-title">To push</div>
+          <div className="git-log-section-list">
+            {logAheadEntries.map((entry) => {
+              const isSelected = selectedCommitSha === entry.sha;
+              return (
+                <GitLogEntryRow
+                  key={entry.sha}
+                  entry={entry}
+                  isSelected={isSelected}
+                  compact
+                  onSelect={onSelectCommit}
+                  onContextMenu={(event) => onShowLogMenu(event, entry)}
+                />
+              );
+            })}
+          </div>
         </div>
-    );
+      )}
+      {showBehindSection && (
+        <div className="git-log-section">
+          <div className="git-log-section-title">To pull</div>
+          <div className="git-log-section-list">
+            {logBehindEntries.map((entry) => {
+              const isSelected = selectedCommitSha === entry.sha;
+              return (
+                <GitLogEntryRow
+                  key={entry.sha}
+                  entry={entry}
+                  isSelected={isSelected}
+                  compact
+                  onSelect={onSelectCommit}
+                  onContextMenu={(event) => onShowLogMenu(event, entry)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {(logEntries.length > 0 || logLoading) && (
+        <div className="git-log-section">
+          <div className="git-log-section-title">Recent commits</div>
+          <div className="git-log-section-list">
+            {logEntries.map((entry) => {
+              const isSelected = selectedCommitSha === entry.sha;
+              return (
+                <GitLogEntryRow
+                  key={entry.sha}
+                  entry={entry}
+                  isSelected={isSelected}
+                  onSelect={onSelectCommit}
+                  onContextMenu={(event) => onShowLogMenu(event, entry)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 type GitIssuesModeContentProps = {
-    issuesError: string | null | undefined;
-    issuesLoading: boolean;
-    issues: GitHubIssue[];
+  issuesError: string | null | undefined;
+  issuesLoading: boolean;
+  issues: GitHubIssue[];
 };
 
 export function GitIssuesModeContent({
-    issuesError,
-    issuesLoading,
-    issues,
+  issuesError,
+  issuesLoading,
+  issues,
 }: GitIssuesModeContentProps) {
-    return (
-        <div className="git-issues-list">
-            {!issuesError && !issuesLoading && !issues.length && (
-                <div className="diff-empty">No open issues.</div>
-            )}
-            {issues.map((issue) => {
-                const relativeTime = formatRelativeTime(new Date(issue.updatedAt).getTime());
-                return (
-                    <a
-                        key={issue.number}
-                        className="git-issue-entry"
-                        href={issue.url}
-                        onClick={(event) => {
-                            event.preventDefault();
-                            void openUrl(issue.url);
-                        }}
-                    >
-                        <div className="git-issue-summary">
-                            <span className="git-issue-number">#{issue.number}</span>
-                            <span className="git-issue-title">{issue.title}</span>
-                            <span className="git-issue-date">{relativeTime}</span>
-                        </div>
-                    </a>
-                );
-            })}
-        </div>
-    );
+  return (
+    <div className="git-issues-list">
+      {!issuesError && !issuesLoading && !issues.length && (
+        <div className="diff-empty">No open issues.</div>
+      )}
+      {issues.map((issue) => {
+        const relativeTime = formatRelativeTime(
+          new Date(issue.updatedAt).getTime(),
+        );
+        return (
+          <a
+            key={issue.number}
+            className="git-issue-entry"
+            href={issue.url}
+            onClick={(event) => {
+              event.preventDefault();
+              void openExternalUrl(issue.url);
+            }}
+          >
+            <div className="git-issue-summary">
+              <span className="git-issue-number">#{issue.number}</span>
+              <span className="git-issue-title">{issue.title}</span>
+              <span className="git-issue-date">{relativeTime}</span>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  );
 }
 
 type GitPullRequestsModeContentProps = {
-    pullRequestsError: string | null | undefined;
-    pullRequestsLoading: boolean;
-    pullRequests: GitHubPullRequest[];
-    selectedPullRequest: number | null;
-    onSelectPullRequest?: (pullRequest: GitHubPullRequest) => void;
-    onShowPullRequestMenu: (
-        event: ReactMouseEvent<HTMLDivElement>,
-        pullRequest: GitHubPullRequest,
-    ) => void;
+  pullRequestsError: string | null | undefined;
+  pullRequestsLoading: boolean;
+  pullRequests: GitHubPullRequest[];
+  selectedPullRequest: number | null;
+  onSelectPullRequest?: (pullRequest: GitHubPullRequest) => void;
+  onShowPullRequestMenu: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    pullRequest: GitHubPullRequest,
+  ) => void;
 };
 
 export function GitPullRequestsModeContent({
-    pullRequestsError,
-    pullRequestsLoading,
-    pullRequests,
-    selectedPullRequest,
-    onSelectPullRequest,
-    onShowPullRequestMenu,
+  pullRequestsError,
+  pullRequestsLoading,
+  pullRequests,
+  selectedPullRequest,
+  onSelectPullRequest,
+  onShowPullRequestMenu,
 }: GitPullRequestsModeContentProps) {
-    return (
-        <div className="git-pr-list">
-            {!pullRequestsError && !pullRequestsLoading && !pullRequests.length && (
-                <div className="diff-empty">No open pull requests.</div>
-            )}
-            {pullRequests.map((pullRequest) => {
-                const relativeTime = formatRelativeTime(new Date(pullRequest.updatedAt).getTime());
-                const author = pullRequest.author?.login ?? "unknown";
-                const isSelected = selectedPullRequest === pullRequest.number;
+  return (
+    <div className="git-pr-list">
+      {!pullRequestsError && !pullRequestsLoading && !pullRequests.length && (
+        <div className="diff-empty">No open pull requests.</div>
+      )}
+      {pullRequests.map((pullRequest) => {
+        const relativeTime = formatRelativeTime(
+          new Date(pullRequest.updatedAt).getTime(),
+        );
+        const author = pullRequest.author?.login ?? "unknown";
+        const isSelected = selectedPullRequest === pullRequest.number;
 
-                return (
-                    <div
-                        key={pullRequest.number}
-                        className={`git-pr-entry ${isSelected ? "active" : ""}`}
-                        onClick={() => onSelectPullRequest?.(pullRequest)}
-                        onContextMenu={(event) => onShowPullRequestMenu(event, pullRequest)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                onSelectPullRequest?.(pullRequest);
-                            }
-                        }}
-                    >
-                        <div className="git-pr-header">
-                            <span className="git-pr-title">
-                                <span className="git-pr-number">#{pullRequest.number}</span>
-                                <span className="git-pr-title-text">{pullRequest.title}</span>
-                            </span>
-                            <span className="git-pr-time">{relativeTime}</span>
-                        </div>
-                        <div className="git-pr-meta">
-                            <span className="git-pr-author-inline">@{author}</span>
-                            {pullRequest.isDraft && <span className="git-pr-pill git-pr-draft">Draft</span>}
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
+        return (
+          <div
+            key={pullRequest.number}
+            className={`git-pr-entry ${isSelected ? "active" : ""}`}
+            onClick={() => onSelectPullRequest?.(pullRequest)}
+            onContextMenu={(event) => onShowPullRequestMenu(event, pullRequest)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelectPullRequest?.(pullRequest);
+              }
+            }}
+          >
+            <div className="git-pr-header">
+              <span className="git-pr-title">
+                <span className="git-pr-number">#{pullRequest.number}</span>
+                <span className="git-pr-title-text">{pullRequest.title}</span>
+              </span>
+              <span className="git-pr-time">{relativeTime}</span>
+            </div>
+            <div className="git-pr-meta">
+              <span className="git-pr-author-inline">@{author}</span>
+              {pullRequest.isDraft && (
+                <span className="git-pr-pill git-pr-draft">Draft</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }

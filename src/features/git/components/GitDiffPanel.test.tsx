@@ -33,6 +33,10 @@ vi.mock("@tauri-apps/api/dpi", () => ({
 
 const revealItemInDir = vi.hoisted(() => vi.fn());
 
+vi.mock("../../../services/tauri", () => ({
+  openExternalUrl: vi.fn(),
+}));
+
 vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: vi.fn(),
   revealItemInDir: (...args: unknown[]) => revealItemInDir(...args),
