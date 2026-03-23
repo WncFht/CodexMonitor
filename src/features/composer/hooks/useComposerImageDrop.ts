@@ -30,19 +30,46 @@ function isDragFileTransfer(types: readonly string[] | undefined) {
   );
 }
 
-function readFilesAsDataUrls(files: File[]) {
+function readBlobsAsDataUrls(blobs: Blob[]) {
   return Promise.all(
-    files.map(
-      (file) =>
+    blobs.map(
+      (blob) =>
         new Promise<string>((resolve) => {
           const reader = new FileReader();
           reader.onload = () =>
             resolve(typeof reader.result === "string" ? reader.result : "");
           reader.onerror = () => resolve("");
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(blob);
         }),
     ),
   ).then((items) => items.filter(Boolean));
+}
+
+async function readClipboardImagesFromNavigator() {
+  if (
+    typeof navigator === "undefined" ||
+    typeof navigator.clipboard?.read !== "function"
+  ) {
+    return [];
+  }
+  try {
+    const items = await navigator.clipboard.read();
+    const blobs: Blob[] = [];
+    for (const item of items) {
+      const imageTypes = item.types.filter((type) => type.startsWith("image/"));
+      for (const type of imageTypes) {
+        try {
+          const blob = await item.getType(type);
+          blobs.push(blob);
+        } catch {
+          // Ignore individual clipboard types and keep checking others.
+        }
+      }
+    }
+    return blobs;
+  } catch {
+    return [];
+  }
 }
 
 function getDragPosition(position: { x: number; y: number }) {
@@ -179,7 +206,7 @@ export function useComposerImageDrop({
     if (fileImages.length === 0) {
       return;
     }
-    const dataUrls = await readFilesAsDataUrls(fileImages);
+    const dataUrls = await readBlobsAsDataUrls(fileImages);
     if (dataUrls.length > 0) {
       onAttachImages?.(dataUrls);
     }
@@ -191,31 +218,25 @@ export function useComposerImageDrop({
     }
     const items = Array.from(event.clipboardData?.items ?? []);
     const imageItems = items.filter((item) => item.type.startsWith("image/"));
-    if (imageItems.length === 0) {
+    const imageFilesFromItems = imageItems
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file));
+    const imageFilesFromClipboard = Array.from(event.clipboardData?.files ?? []).filter(
+      (file) => file.type.startsWith("image/"),
+    );
+    const clipboardBlobs: Blob[] =
+      imageFilesFromItems.length > 0
+        ? imageFilesFromItems
+        : imageFilesFromClipboard.length > 0
+          ? imageFilesFromClipboard
+          : await readClipboardImagesFromNavigator();
+    if (clipboardBlobs.length === 0) {
       return;
     }
     event.preventDefault();
-    const files = imageItems
-      .map((item) => item.getAsFile())
-      .filter((file): file is File => Boolean(file));
-    if (!files.length) {
-      return;
-    }
-    const dataUrls = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () =>
-              resolve(typeof reader.result === "string" ? reader.result : "");
-            reader.onerror = () => resolve("");
-            reader.readAsDataURL(file);
-          }),
-      ),
-    );
-    const valid = dataUrls.filter(Boolean);
-    if (valid.length > 0) {
-      onAttachImages?.(valid);
+    const dataUrls = await readBlobsAsDataUrls(clipboardBlobs);
+    if (dataUrls.length > 0) {
+      onAttachImages?.(dataUrls);
     }
   };
 

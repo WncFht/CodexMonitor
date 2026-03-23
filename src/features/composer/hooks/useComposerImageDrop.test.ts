@@ -175,6 +175,45 @@ describe("useComposerImageDrop", () => {
     restoreFileReader();
   });
 
+  it("falls back to navigator.clipboard.read for pasted images", async () => {
+    const restoreFileReader = setMockFileReader();
+    const onAttachImages = vi.fn();
+    const hook = renderImageDropHook({ disabled: false, onAttachImages });
+    const preventDefault = vi.fn();
+    const originalClipboard = navigator.clipboard;
+
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        read: vi.fn().mockResolvedValue([
+          {
+            types: ["image/png"],
+            getType: vi.fn().mockResolvedValue(new Blob(["data"], { type: "image/png" })),
+          },
+        ]),
+      },
+    });
+
+    await act(async () => {
+      await hook.result.handlePaste({
+        clipboardData: { items: [], files: [] },
+        preventDefault,
+      } as unknown as React.ClipboardEvent<HTMLTextAreaElement>);
+    });
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(onAttachImages).toHaveBeenCalledWith([
+      "data:image/png;base64,MOCK",
+    ]);
+
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: originalClipboard,
+    });
+    hook.unmount();
+    restoreFileReader();
+  });
+
   it("filters tauri drag-drop paths and respects drop target", async () => {
     const onAttachImages = vi.fn();
     const hook = renderImageDropHook({ disabled: false, onAttachImages });
