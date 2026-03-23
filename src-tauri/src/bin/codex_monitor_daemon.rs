@@ -15,6 +15,8 @@ mod file_ops;
 mod file_policy;
 #[path = "../git_utils.rs"]
 mod git_utils;
+#[path = "../linux_focus.rs"]
+mod linux_focus;
 #[path = "codex_monitor_daemon/rpc.rs"]
 mod rpc;
 #[path = "../rules.rs"]
@@ -692,11 +694,7 @@ impl DaemonState {
         codex_core::resume_thread_core(&self.sessions, workspace_id, thread_id).await
     }
 
-    async fn read_thread(
-        &self,
-        workspace_id: String,
-        thread_id: String,
-    ) -> Result<Value, String> {
+    async fn read_thread(&self, workspace_id: String, thread_id: String) -> Result<Value, String> {
         codex_core::read_thread_core(&self.sessions, workspace_id, thread_id).await
     }
 
@@ -765,8 +763,7 @@ impl DaemonState {
         limit: Option<u32>,
         sort_key: Option<String>,
     ) -> Result<Value, String> {
-        codex_core::list_threads_core(&self.sessions, workspace_id, cursor, limit, sort_key)
-            .await
+        codex_core::list_threads_core(&self.sessions, workspace_id, cursor, limit, sort_key).await
     }
 
     async fn list_mcp_server_status(

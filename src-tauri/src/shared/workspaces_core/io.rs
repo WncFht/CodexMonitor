@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 
+#[cfg(target_os = "linux")]
+use crate::linux_focus::{dedupe_focus_candidates, focus_linux_window};
 use tokio::sync::Mutex;
 
 use crate::shared::process_core::tokio_command;
@@ -42,6 +44,35 @@ fn command_identifier(command: &str) -> String {
         .and_then(|value| value.to_str())
         .unwrap_or(file_name);
     stem.trim().to_ascii_lowercase()
+}
+
+#[cfg(target_os = "linux")]
+fn resolve_linux_focus_candidates_for_launch(
+    app: Option<&str>,
+    command: Option<&str>,
+) -> Vec<String> {
+    let mut candidates = Vec::new();
+
+    if let Some(command) = command {
+        let identifier = command_identifier(command);
+        if !identifier.is_empty() {
+            candidates.push(identifier);
+        }
+    }
+
+    if let Some(app) = app {
+        let normalized = normalize_app_identifier(app);
+        if !normalized.is_empty() {
+            candidates.push(normalized.clone());
+            candidates.push(normalized.replace(' ', "-"));
+        }
+
+        if let Some(cli_program) = app_cli_command(app) {
+            candidates.push(cli_program.to_string());
+        }
+    }
+
+    dedupe_focus_candidates(candidates)
 }
 
 fn command_launch_strategy(command: &str) -> Option<LineAwareLaunchStrategy> {
@@ -185,6 +216,10 @@ pub(crate) async fn open_workspace_in_core(
         .or_else(|| app.as_ref().map(|value| format!("app `{value}`")))
         .unwrap_or_else(|| "target".to_string());
 
+    #[cfg(target_os = "linux")]
+    let focus_candidates =
+        resolve_linux_focus_candidates_for_launch(app.as_deref(), command.as_deref());
+
     let output = if let Some(command) = command {
         let trimmed = command.trim();
         if trimmed.is_empty() {
@@ -274,6 +309,11 @@ pub(crate) async fn open_workspace_in_core(
     };
 
     if output.status.success() {
+        #[cfg(target_os = "linux")]
+        if !focus_candidates.is_empty() {
+            let _ = focus_linux_window(&focus_candidates).await;
+        }
+
         return Ok(());
     }
 
@@ -304,6 +344,8 @@ pub(crate) async fn open_workspace_in_core(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(target_os = "linux")]
+    use super::resolve_linux_focus_candidates_for_launch;
     use super::{
         app_cli_command, app_launch_strategy, build_launch_args, command_launch_strategy,
         LineAwareLaunchStrategy,
@@ -471,8 +513,7 @@ mod tests {
             args,
             vec![
                 "--goto".to_string(),
-                r"\\?\Volume{01234567-89ab-cdef-0123-456789abcdef}\repo\src\App.tsx:5"
-                    .to_string(),
+                r"\\?\Volume{01234567-89ab-cdef-0123-456789abcdef}\repo\src\App.tsx:5".to_string(),
             ]
         );
     }
@@ -505,6 +546,48 @@ mod tests {
             vec![
                 "--foreground".to_string(),
                 "/tmp/project/src/App.tsx".to_string(),
+            ]
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn derives_focus_candidates_for_known_editor_apps() {
+        assert_eq!(
+            resolve_linux_focus_candidates_for_launch(Some("Visual Studio Code"), None),
+            vec![
+                "visual studio code".to_string(),
+                "visual-studio-code".to_string(),
+                "code".to_string()
+            ]
+        );
+        assert_eq!(
+            resolve_linux_focus_candidates_for_launch(Some("Zed Preview"), None),
+            vec![
+                "zed preview".to_string(),
+                "zed-preview".to_string(),
+                "zed".to_string()
+            ]
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn derives_focus_candidates_for_commands() {
+        assert_eq!(
+            resolve_linux_focus_candidates_for_launch(None, Some("/usr/bin/code")),
+            vec!["code".to_string()]
+        );
+        assert_eq!(
+            resolve_linux_focus_candidates_for_launch(
+                Some("Visual Studio Code"),
+                Some("/usr/bin/code-insiders")
+            ),
+            vec![
+                "code-insiders".to_string(),
+                "visual studio code".to_string(),
+                "visual-studio-code".to_string(),
+                "code".to_string()
             ]
         );
     }
