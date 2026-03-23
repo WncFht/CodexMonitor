@@ -1189,24 +1189,15 @@ export function buildConversationItem(
       receiverAgents,
     );
     const prompt = asString(item.prompt ?? "");
-    const agentsState = formatCollabAgentStatuses(collabStatuses);
-    const detailParts = [sender ? `From ${formatCollabAgentLabel(sender)}` : ""]
-      .concat(
-        receiverAgents.length > 0
-          ? `→ ${receiverAgents.map((entry) => formatCollabAgentLabel(entry)).join(", ")}`
-          : "",
-      )
-      .filter(Boolean);
-    const outputParts = [prompt, agentsState].filter(Boolean);
     const primaryReceiver = receiverFromInteraction ?? receiverFromSpawn ?? receiverAgents[0];
     return {
       id,
       kind: "tool",
       toolType: "collabToolCall",
       title: tool ? `Collab: ${tool}` : "Collab tool call",
-      detail: detailParts.join(" "),
+      detail: buildCollabDetail(sender ?? undefined, receiverAgents),
       status,
-      output: outputParts.join("\n\n"),
+      output: buildCollabOutput(prompt, collabStatuses),
       collabSender: sender ?? undefined,
       collabReceiver: primaryReceiver ?? undefined,
       collabReceivers: receiverAgents.length > 0 ? receiverAgents : undefined,

@@ -137,6 +137,24 @@ describe("threadReducer", () => {
     ]);
   });
 
+  it("does not churn state for unchanged thread names", () => {
+    const base = {
+      ...initialState,
+      threadsByWorkspace: {
+        "ws-1": [{ id: "thread-1", name: "Agent 1", updatedAt: 1000 }],
+      },
+    };
+
+    expect(
+      threadReducer(base, {
+        type: "setThreadName",
+        workspaceId: "ws-1",
+        threadId: "thread-1",
+        name: "Agent 1",
+      }),
+    ).toBe(base);
+  });
+
   it("tracks processing durations", () => {
     const started = threadReducer(
       {

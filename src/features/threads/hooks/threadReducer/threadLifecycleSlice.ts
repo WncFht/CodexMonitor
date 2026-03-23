@@ -264,9 +264,20 @@ export function reduceThreadLifecycle(
     }
     case "setThreadName": {
       const list = state.threadsByWorkspace[action.workspaceId] ?? [];
-      const next = list.map((thread) =>
-        thread.id === action.threadId ? { ...thread, name: action.name } : thread,
-      );
+      if (!list.length) {
+        return state;
+      }
+      let didChange = false;
+      const next = list.map((thread) => {
+        if (thread.id !== action.threadId || thread.name === action.name) {
+          return thread;
+        }
+        didChange = true;
+        return { ...thread, name: action.name };
+      });
+      if (!didChange) {
+        return state;
+      }
       return {
         ...state,
         threadsByWorkspace: {

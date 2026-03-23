@@ -23,16 +23,20 @@ export function useThreadSelectors({
     return activeThreadIdByWorkspace[activeWorkspaceId] ?? null;
   }, [activeThreadIdByWorkspace, activeWorkspaceId]);
 
+  const activeWorkspaceThreads = activeWorkspaceId
+    ? threadsByWorkspace[activeWorkspaceId]
+    : undefined;
+
   const activeItems = useMemo<ConversationItem[]>(
     () => {
       if (!activeThreadId) {
         return [];
       }
       const items = itemsByThread[activeThreadId] ?? [];
-      const threads = activeWorkspaceId ? threadsByWorkspace[activeWorkspaceId] ?? [] : [];
+      const threads = activeWorkspaceThreads ?? [];
       return enrichConversationItemsWithThreads(items, threads);
     },
-    [activeThreadId, activeWorkspaceId, itemsByThread, threadsByWorkspace],
+    [activeThreadId, activeWorkspaceThreads, itemsByThread],
   );
 
   return { activeThreadId, activeItems };

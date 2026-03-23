@@ -24,7 +24,10 @@ import {
   previewThreadName,
 } from "@utils/threadItems";
 import { extractThreadCodexMetadata } from "@threads/utils/threadCodexMetadata";
-import { buildThreadSummaryFromThread } from "@threads/utils/threadSummary";
+import {
+  buildThreadSummaryFromThread,
+  extractThreadFromResponse,
+} from "@threads/utils/threadSummary";
 import { asString, normalizeRootPath } from "@threads/utils/threadNormalize";
 import {
   getParentThreadIdFromThread,
@@ -165,10 +168,13 @@ export function useThreadActions({
   threadStatusByIdRef.current = threadStatusById;
   activeTurnIdByThreadRef.current = activeTurnIdByThread;
 
-  const extractThreadId = useCallback((response: Record<string, any>) => {
-    const thread = response.result?.thread ?? response.thread ?? null;
-    return String(thread?.id ?? "");
-  }, []);
+  const extractThreadId = useCallback(
+    (response: Record<string, unknown> | null | undefined) => {
+      const thread = extractThreadFromResponse(response);
+      return String(thread?.id ?? "");
+    },
+    [],
+  );
 
   const startThreadForWorkspace = useCallback(
     async (workspaceId: string, options?: { activate?: boolean }) => {
@@ -262,12 +268,7 @@ export function useThreadActions({
           label: "thread/resume response",
           payload: response,
         });
-        const result = (response?.result ?? response) as
-          | Record<string, unknown>
-          | null;
-        const thread = (result?.thread ?? response?.thread ?? null) as
-          | Record<string, unknown>
-          | null;
+        const thread = extractThreadFromResponse(response);
         if (thread) {
           const codexMetadata = extractThreadCodexMetadata(thread);
           if (codexMetadata.modelId || codexMetadata.effort) {
