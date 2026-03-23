@@ -33,7 +33,7 @@ function isMissingTauriInvokeError(error: unknown) {
   return (
     error instanceof TypeError &&
     (error.message.includes("reading 'invoke'") ||
-      error.message.includes("reading \"invoke\""))
+      error.message.includes('reading "invoke"'))
   );
 }
 
@@ -108,7 +108,9 @@ export async function listWorkspaces(): Promise<WorkspaceInfo[]> {
     if (isMissingTauriInvokeError(error)) {
       // In non-Tauri environments (e.g., Electron/web previews), the invoke
       // bridge may be missing. Treat this as "no workspaces" instead of crashing.
-      console.warn("Tauri invoke bridge unavailable; returning empty workspaces list.");
+      console.warn(
+        "Tauri invoke bridge unavailable; returning empty workspaces list.",
+      );
       return [];
     }
     throw error;
@@ -210,7 +212,9 @@ export async function readGlobalCodexConfigToml(): Promise<GlobalCodexConfigResp
   return fileRead("global", "config");
 }
 
-export async function writeGlobalCodexConfigToml(content: string): Promise<void> {
+export async function writeGlobalCodexConfigToml(
+  content: string,
+): Promise<void> {
   return fileWrite("global", "config", content);
 }
 
@@ -224,15 +228,21 @@ export async function setAgentsCoreSettings(
   return invoke<AgentsSettings>("set_agents_core_settings", { input });
 }
 
-export async function createAgent(input: CreateAgentInput): Promise<AgentsSettings> {
+export async function createAgent(
+  input: CreateAgentInput,
+): Promise<AgentsSettings> {
   return invoke<AgentsSettings>("create_agent", { input });
 }
 
-export async function updateAgent(input: UpdateAgentInput): Promise<AgentsSettings> {
+export async function updateAgent(
+  input: UpdateAgentInput,
+): Promise<AgentsSettings> {
   return invoke<AgentsSettings>("update_agent", { input });
 }
 
-export async function deleteAgent(input: DeleteAgentInput): Promise<AgentsSettings> {
+export async function deleteAgent(
+  input: DeleteAgentInput,
+): Promise<AgentsSettings> {
   return invoke<AgentsSettings>("delete_agent", { input });
 }
 
@@ -247,7 +257,9 @@ export async function writeAgentConfigToml(
   return invoke("write_agent_config_toml", { agentName, content });
 }
 
-export async function getConfigModel(workspaceId: string): Promise<string | null> {
+export async function getConfigModel(
+  workspaceId: string,
+): Promise<string | null> {
   const response = await invoke<{ model?: string | null }>("get_config_model", {
     workspaceId,
   });
@@ -297,7 +309,12 @@ export async function addWorktree(
   name: string | null,
   copyAgentsMd = true,
 ): Promise<WorkspaceInfo> {
-  return invoke<WorkspaceInfo>("add_worktree", { parentId, branch, name, copyAgentsMd });
+  return invoke<WorkspaceInfo>("add_worktree", {
+    parentId,
+    branch,
+    name,
+    copyAgentsMd,
+  });
 }
 
 export type WorktreeSetupStatus = {
@@ -431,7 +448,9 @@ async function convertImagesToDataUrls(images: string[]): Promise<string[]> {
   );
 }
 
-async function normalizeImagesForRpc(images?: string[]): Promise<string[] | null> {
+async function normalizeImagesForRpc(
+  images?: string[],
+): Promise<string[] | null> {
   if (images == null) {
     return null;
   }
@@ -445,7 +464,10 @@ async function normalizeImagesForRpc(images?: string[]): Promise<string[] | null
   let settings: AppSettings;
   let mobileRuntime: boolean;
   try {
-    [settings, mobileRuntime] = await Promise.all([getAppSettings(), isMobileRuntime()]);
+    [settings, mobileRuntime] = await Promise.all([
+      getAppSettings(),
+      isMobileRuntime(),
+    ]);
   } catch (error) {
     if (isMissingTauriInvokeError(error)) {
       return images;
@@ -589,7 +611,11 @@ export async function initGitRepo(
   branch: string,
   force = false,
 ): Promise<InitGitRepoResponse> {
-  return invoke<InitGitRepoResponse>("init_git_repo", { workspaceId, branch, force });
+  return invoke<InitGitRepoResponse>("init_git_repo", {
+    workspaceId,
+    branch,
+    force,
+  });
 }
 
 export type CreateGitHubRepoResponse =
@@ -643,7 +669,9 @@ export async function getGitCommitDiff(
   return invoke("get_git_commit_diff", { workspaceId: workspace_id, sha });
 }
 
-export async function getGitRemote(workspace_id: string): Promise<string | null> {
+export async function getGitRemote(
+  workspace_id: string,
+): Promise<string | null> {
   return invoke("get_git_remote", { workspaceId: workspace_id });
 }
 
@@ -736,7 +764,9 @@ export async function localUsageSnapshot(
   days?: number,
   workspacePath?: string | null,
 ): Promise<LocalUsageSnapshot> {
-  const payload: { days: number; workspacePath?: string } = { days: days ?? 30 };
+  const payload: { days: number; workspacePath?: string } = {
+    days: days ?? 30,
+  };
   if (workspacePath) {
     payload.workspacePath = workspacePath;
   }
@@ -752,7 +782,11 @@ export async function getExperimentalFeatureList(
   cursor?: string | null,
   limit?: number | null,
 ) {
-  return invoke<any>("experimental_feature_list", { workspaceId, cursor, limit });
+  return invoke<any>("experimental_feature_list", {
+    workspaceId,
+    cursor,
+    limit,
+  });
 }
 
 export async function setCodexFeatureFlag(
@@ -763,10 +797,13 @@ export async function setCodexFeatureFlag(
 }
 
 export async function generateRunMetadata(workspaceId: string, prompt: string) {
-  return invoke<{ title: string; worktreeName: string }>("generate_run_metadata", {
-    workspaceId,
-    prompt,
-  });
+  return invoke<{ title: string; worktreeName: string }>(
+    "generate_run_metadata",
+    {
+      workspaceId,
+      prompt,
+    },
+  );
 }
 
 export async function getCollaborationModes(workspaceId: string) {
@@ -782,9 +819,12 @@ export async function getAccountInfo(workspaceId: string) {
 }
 
 export async function runCodexLogin(workspaceId: string) {
-  return invoke<{ loginId: string; authUrl: string; raw?: unknown }>("codex_login", {
-    workspaceId,
-  });
+  return invoke<{ loginId: string; authUrl: string; raw?: unknown }>(
+    "codex_login",
+    {
+      workspaceId,
+    },
+  );
 }
 
 export async function cancelCodexLogin(workspaceId: string) {
@@ -882,7 +922,9 @@ export async function isMobileRuntime(): Promise<boolean> {
   return invoke<boolean>("is_mobile_runtime");
 }
 
-export async function updateAppSettings(settings: AppSettings): Promise<AppSettings> {
+export async function updateAppSettings(
+  settings: AppSettings,
+): Promise<AppSettings> {
   return invoke<AppSettings>("update_app_settings", { settings });
 }
 
@@ -891,7 +933,9 @@ export async function tailscaleStatus(): Promise<TailscaleStatus> {
 }
 
 export async function tailscaleDaemonCommandPreview(): Promise<TailscaleDaemonCommandPreview> {
-  return invoke<TailscaleDaemonCommandPreview>("tailscale_daemon_command_preview");
+  return invoke<TailscaleDaemonCommandPreview>(
+    "tailscale_daemon_command_preview",
+  );
 }
 
 export async function tailscaleDaemonStart(): Promise<TcpDaemonStatus> {
@@ -939,17 +983,25 @@ export async function readWorkspaceFile(
   workspaceId: string,
   path: string,
 ): Promise<{ content: string; truncated: boolean }> {
-  return invoke<{ content: string; truncated: boolean }>("read_workspace_file", {
-    workspaceId,
-    path,
-  });
+  return invoke<{ content: string; truncated: boolean }>(
+    "read_workspace_file",
+    {
+      workspaceId,
+      path,
+    },
+  );
 }
 
-export async function readAgentMd(workspaceId: string): Promise<AgentMdResponse> {
+export async function readAgentMd(
+  workspaceId: string,
+): Promise<AgentMdResponse> {
   return fileRead("workspace", "agents", workspaceId);
 }
 
-export async function writeAgentMd(workspaceId: string, content: string): Promise<void> {
+export async function writeAgentMd(
+  workspaceId: string,
+  content: string,
+): Promise<void> {
   return fileWrite("workspace", "agents", content, workspaceId);
 }
 
@@ -1081,11 +1133,17 @@ export async function readThread(workspaceId: string, threadId: string) {
   return invoke<any>("read_thread", { workspaceId, threadId });
 }
 
-export async function threadLiveSubscribe(workspaceId: string, threadId: string) {
+export async function threadLiveSubscribe(
+  workspaceId: string,
+  threadId: string,
+) {
   return invoke<any>("thread_live_subscribe", { workspaceId, threadId });
 }
 
-export async function threadLiveUnsubscribe(workspaceId: string, threadId: string) {
+export async function threadLiveUnsubscribe(
+  workspaceId: string,
+  threadId: string,
+) {
   return invoke<any>("thread_live_unsubscribe", { workspaceId, threadId });
 }
 
@@ -1113,7 +1171,10 @@ export async function generateCommitMessage(
   workspaceId: string,
   commitMessageModelId: string | null,
 ): Promise<string> {
-  return invoke("generate_commit_message", { workspaceId, commitMessageModelId });
+  return invoke("generate_commit_message", {
+    workspaceId,
+    commitMessageModelId,
+  });
 }
 
 export type GeneratedAgentConfiguration = {

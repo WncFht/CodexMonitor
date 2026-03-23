@@ -1100,6 +1100,7 @@
   overflow-wrap: break-word;
   word-break: normal;
   line-break: auto;
+  font-family: var(--chat-font-family);
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-stronger);

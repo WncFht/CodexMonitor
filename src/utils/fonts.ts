@@ -1,8 +1,17 @@
-export const DEFAULT_UI_FONT_FAMILY =
+export const DEFAULT_VSCODE_FONT_FAMILY =
+  "'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font', '霞鹜文楷等宽', 'LXGW WenKai Mono'";
+
+export const LEGACY_DEFAULT_UI_FONT_FAMILY =
   'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
-export const DEFAULT_CODE_FONT_FAMILY =
+export const LEGACY_DEFAULT_CODE_FONT_FAMILY =
   'ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+
+export const DEFAULT_UI_FONT_FAMILY = DEFAULT_VSCODE_FONT_FAMILY;
+
+export const DEFAULT_CHAT_FONT_FAMILY = DEFAULT_VSCODE_FONT_FAMILY;
+
+export const DEFAULT_CODE_FONT_FAMILY = DEFAULT_VSCODE_FONT_FAMILY;
 
 export const CODE_FONT_SIZE_DEFAULT = 11;
 export const CODE_FONT_SIZE_MIN = 9;

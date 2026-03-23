@@ -123,7 +123,10 @@ describe("tauri invoke wrappers", () => {
     const openMock = vi.mocked(open);
     openMock.mockResolvedValueOnce(["/tmp/one", "/tmp/two"]);
 
-    await expect(pickWorkspacePaths()).resolves.toEqual(["/tmp/one", "/tmp/two"]);
+    await expect(pickWorkspacePaths()).resolves.toEqual([
+      "/tmp/one",
+      "/tmp/two",
+    ]);
   });
 
   it("includes heic and heif in the image picker filter", async () => {
@@ -174,7 +177,9 @@ describe("tauri invoke wrappers", () => {
     const invokeMock = vi.mocked(invoke);
     saveMock.mockResolvedValueOnce("/tmp/plan.md");
 
-    await expect(exportMarkdownFile("# Plan", "my-plan.md")).resolves.toBe("/tmp/plan.md");
+    await expect(exportMarkdownFile("# Plan", "my-plan.md")).resolves.toBe(
+      "/tmp/plan.md",
+    );
 
     expect(saveMock).toHaveBeenCalledWith({
       title: "Export plan as Markdown",
@@ -523,7 +528,11 @@ describe("tauri invoke wrappers", () => {
 
   it("reads agent.md for a workspace", async () => {
     const invokeMock = vi.mocked(invoke);
-    invokeMock.mockResolvedValueOnce({ exists: true, content: "# Agent", truncated: false });
+    invokeMock.mockResolvedValueOnce({
+      exists: true,
+      content: "# Agent",
+      truncated: false,
+    });
 
     await readAgentMd("ws-agent");
 
@@ -550,7 +559,11 @@ describe("tauri invoke wrappers", () => {
 
   it("reads global AGENTS.md", async () => {
     const invokeMock = vi.mocked(invoke);
-    invokeMock.mockResolvedValueOnce({ exists: true, content: "# Global", truncated: false });
+    invokeMock.mockResolvedValueOnce({
+      exists: true,
+      content: "# Global",
+      truncated: false,
+    });
 
     await readGlobalAgentsMd();
 
@@ -577,7 +590,11 @@ describe("tauri invoke wrappers", () => {
 
   it("reads global config.toml", async () => {
     const invokeMock = vi.mocked(invoke);
-    invokeMock.mockResolvedValueOnce({ exists: true, content: "model = \"gpt-5\"", truncated: false });
+    invokeMock.mockResolvedValueOnce({
+      exists: true,
+      content: 'model = "gpt-5"',
+      truncated: false,
+    });
 
     await readGlobalCodexConfigToml();
 
@@ -592,13 +609,13 @@ describe("tauri invoke wrappers", () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
-    await writeGlobalCodexConfigToml("model = \"gpt-5\"");
+    await writeGlobalCodexConfigToml('model = "gpt-5"');
 
     expect(invokeMock).toHaveBeenCalledWith("file_write", {
       scope: "global",
       kind: "config",
       workspaceId: undefined,
-      content: "model = \"gpt-5\"",
+      content: 'model = "gpt-5"',
     });
   });
 
@@ -705,7 +722,7 @@ describe("tauri invoke wrappers", () => {
 
   it("reads an agent config file", async () => {
     const invokeMock = vi.mocked(invoke);
-    invokeMock.mockResolvedValueOnce("model = \"gpt-5-codex\"");
+    invokeMock.mockResolvedValueOnce('model = "gpt-5-codex"');
 
     await readAgentConfigToml("researcher");
 
@@ -718,11 +735,11 @@ describe("tauri invoke wrappers", () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
-    await writeAgentConfigToml("researcher", "model = \"gpt-5-codex\"");
+    await writeAgentConfigToml("researcher", 'model = "gpt-5-codex"');
 
     expect(invokeMock).toHaveBeenCalledWith("write_agent_config_toml", {
       agentName: "researcher",
-      content: "model = \"gpt-5-codex\"",
+      content: 'model = "gpt-5-codex"',
     });
   });
 
@@ -879,7 +896,9 @@ describe("tauri invoke wrappers", () => {
       return undefined;
     });
 
-    await steerTurn("ws-4", "thread-1", "turn-2", "continue", ["/tmp/image.jpg"]);
+    await steerTurn("ws-4", "thread-1", "turn-2", "continue", [
+      "/tmp/image.jpg",
+    ]);
 
     expect(invokeMock).toHaveBeenCalledWith("turn_steer", {
       workspaceId: "ws-4",
@@ -942,9 +961,14 @@ describe("tauri invoke wrappers", () => {
     });
 
     await expect(
-      sendUserMessage("ws-4", "thread-1", "hello", { images: ["/tmp/image.png"] }),
+      sendUserMessage("ws-4", "thread-1", "hello", {
+        images: ["/tmp/image.png"],
+      }),
     ).rejects.toThrow("conversion failed");
-    expect(invokeMock).not.toHaveBeenCalledWith("send_user_message", expect.anything());
+    expect(invokeMock).not.toHaveBeenCalledWith(
+      "send_user_message",
+      expect.anything(),
+    );
   });
 
   it("omits delivery when starting reviews without override", async () => {
@@ -964,7 +988,12 @@ describe("tauri invoke wrappers", () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
-    await startReview("ws-5", "thread-2", { type: "uncommittedChanges" }, "detached");
+    await startReview(
+      "ws-5",
+      "thread-2",
+      { type: "uncommittedChanges" },
+      "detached",
+    );
 
     expect(invokeMock).toHaveBeenCalledWith("start_review", {
       workspaceId: "ws-5",

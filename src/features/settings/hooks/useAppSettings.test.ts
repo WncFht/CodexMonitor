@@ -3,11 +3,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppSettings, CodexDoctorResult } from "@/types";
 import { useAppSettings } from "./useAppSettings";
-import {
-  getAppSettings,
-  runCodexDoctor,
-  updateAppSettings,
-} from "@services/tauri";
+import { getAppSettings, runCodexDoctor, updateAppSettings } from "@services/tauri";
 import { UI_SCALE_DEFAULT, UI_SCALE_MAX } from "@utils/uiScale";
 
 vi.mock("@services/tauri", () => ({
@@ -37,8 +33,12 @@ describe("useAppSettings", () => {
         backendMode: "remote",
         remoteBackendHost: "example:1234",
         personality: "unknown",
-        uiFontFamily: "",
-        codeFontFamily: "  ",
+        uiFontFamily:
+          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        chatFontFamily:
+          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        codeFontFamily:
+          'ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
         codeFontSize: 25,
       } as unknown) as AppSettings,
     );
@@ -49,8 +49,9 @@ describe("useAppSettings", () => {
 
     expect(result.current.settings.uiScale).toBe(UI_SCALE_MAX);
     expect(result.current.settings.theme).toBe("system");
-    expect(result.current.settings.uiFontFamily).toContain("system-ui");
-    expect(result.current.settings.codeFontFamily).toContain("ui-monospace");
+    expect(result.current.settings.uiFontFamily).toContain("JetBrainsMono Nerd Font Mono");
+    expect(result.current.settings.chatFontFamily).toContain("JetBrainsMono Nerd Font Mono");
+    expect(result.current.settings.codeFontFamily).toContain("JetBrainsMono Nerd Font Mono");
     expect(result.current.settings.codeFontSize).toBe(16);
     expect(result.current.settings.personality).toBe("friendly");
     expect(result.current.settings.backendMode).toBe("remote");
@@ -66,8 +67,9 @@ describe("useAppSettings", () => {
 
     expect(result.current.settings.uiScale).toBe(UI_SCALE_DEFAULT);
     expect(result.current.settings.theme).toBe("system");
-    expect(result.current.settings.uiFontFamily).toContain("system-ui");
-    expect(result.current.settings.codeFontFamily).toContain("ui-monospace");
+    expect(result.current.settings.uiFontFamily).toContain("JetBrainsMono Nerd Font Mono");
+    expect(result.current.settings.chatFontFamily).toContain("JetBrainsMono Nerd Font Mono");
+    expect(result.current.settings.codeFontFamily).toContain("JetBrainsMono Nerd Font Mono");
     expect(result.current.settings.backendMode).toBe("local");
     expect(result.current.settings.dictationModelId).toBe("base");
     expect(result.current.settings.interruptShortcut).toBeTruthy();
@@ -110,8 +112,9 @@ describe("useAppSettings", () => {
       expect.objectContaining({
         theme: "system",
         uiScale: 0.1,
-        uiFontFamily: expect.stringContaining("system-ui"),
-        codeFontFamily: expect.stringContaining("ui-monospace"),
+        uiFontFamily: expect.stringContaining("JetBrainsMono Nerd Font Mono"),
+        chatFontFamily: expect.stringContaining("JetBrainsMono Nerd Font Mono"),
+        codeFontFamily: expect.stringContaining("JetBrainsMono Nerd Font Mono"),
         codeFontSize: 9,
         notificationSoundsEnabled: false,
       }),
@@ -119,6 +122,24 @@ describe("useAppSettings", () => {
     expect(returned).toEqual(saved);
     expect(result.current.settings.theme).toBe("dark");
     expect(result.current.settings.uiScale).toBe(2.4);
+  });
+
+  it("keeps custom font choices instead of remapping them", async () => {
+    getAppSettingsMock.mockResolvedValue(
+      ({
+        uiFontFamily: "Avenir, sans-serif",
+        chatFontFamily: "Iosevka, monospace",
+        codeFontFamily: "Berkeley Mono, monospace",
+      } as unknown) as AppSettings,
+    );
+
+    const { result } = renderHook(() => useAppSettings());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.settings.uiFontFamily).toBe("Avenir, sans-serif");
+    expect(result.current.settings.chatFontFamily).toBe("Iosevka, monospace");
+    expect(result.current.settings.codeFontFamily).toBe("Berkeley Mono, monospace");
   });
 
   it("surfaces doctor errors", async () => {

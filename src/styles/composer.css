@@ -331,6 +331,7 @@
   background: transparent;
   color: inherit;
   padding: 6px 4px 4px;
+  font-family: var(--chat-font-family);
   font-size: 14px;
   line-height: 1.5;
   -webkit-app-region: no-drag;

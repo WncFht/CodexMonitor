@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppSettings } from "@/types";
-import { getAppSettings, runCodexDoctor, updateAppSettings } from "@services/tauri";
+import {
+  getAppSettings,
+  runCodexDoctor,
+  updateAppSettings,
+} from "@services/tauri";
 import { clampUiScale, UI_SCALE_DEFAULT } from "@utils/uiScale";
 import { CHAT_SCROLLBACK_DEFAULT, normalizeChatHistoryScrollbackItems } from "@utils/chatScrollback";
 import {
+  DEFAULT_CHAT_FONT_FAMILY,
   DEFAULT_CODE_FONT_FAMILY,
   DEFAULT_UI_FONT_FAMILY,
+  LEGACY_DEFAULT_CODE_FONT_FAMILY,
+  LEGACY_DEFAULT_UI_FONT_FAMILY,
   CODE_FONT_SIZE_DEFAULT,
   clampCodeFontSize,
   normalizeFontFamily,
@@ -173,6 +180,7 @@ function buildDefaultSettings(): AppSettings {
     threadTitleAutogenerationEnabled: false,
     automaticAppUpdateChecksEnabled: true,
     uiFontFamily: DEFAULT_UI_FONT_FAMILY,
+    chatFontFamily: DEFAULT_CHAT_FONT_FAMILY,
     codeFontFamily: DEFAULT_CODE_FONT_FAMILY,
     codeFontSize: CODE_FONT_SIZE_DEFAULT,
     notificationSoundsEnabled: true,
@@ -211,6 +219,14 @@ function buildDefaultSettings(): AppSettings {
   };
 }
 
+function migrateLegacyFontFamily(
+  value: string,
+  fallback: string,
+  legacyFallback: string,
+): string {
+  return value === legacyFallback ? fallback : value;
+}
+
 function normalizeAppSettings(settings: AppSettings): AppSettings {
   const remoteBackendSettings = normalizeRemoteBackends(settings);
   const normalizedTargets =
@@ -240,6 +256,21 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
   const chatHistoryScrollbackItems = normalizeChatHistoryScrollbackItems(
     settings.chatHistoryScrollbackItems,
   );
+  const normalizedUiFontFamily = migrateLegacyFontFamily(
+    normalizeFontFamily(settings.uiFontFamily, DEFAULT_UI_FONT_FAMILY),
+    DEFAULT_UI_FONT_FAMILY,
+    LEGACY_DEFAULT_UI_FONT_FAMILY,
+  );
+  const normalizedChatFontFamily = migrateLegacyFontFamily(
+    normalizeFontFamily(settings.chatFontFamily, DEFAULT_CHAT_FONT_FAMILY),
+    DEFAULT_CHAT_FONT_FAMILY,
+    LEGACY_DEFAULT_UI_FONT_FAMILY,
+  );
+  const normalizedCodeFontFamily = migrateLegacyFontFamily(
+    normalizeFontFamily(settings.codeFontFamily, DEFAULT_CODE_FONT_FAMILY),
+    DEFAULT_CODE_FONT_FAMILY,
+    LEGACY_DEFAULT_CODE_FONT_FAMILY,
+  );
   return {
     ...settings,
     ...remoteBackendSettings,
@@ -247,14 +278,9 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     codexArgs: settings.codexArgs?.trim() ? settings.codexArgs.trim() : null,
     uiScale: clampUiScale(settings.uiScale),
     theme: allowedThemes.has(settings.theme) ? settings.theme : "system",
-    uiFontFamily: normalizeFontFamily(
-      settings.uiFontFamily,
-      DEFAULT_UI_FONT_FAMILY,
-    ),
-    codeFontFamily: normalizeFontFamily(
-      settings.codeFontFamily,
-      DEFAULT_CODE_FONT_FAMILY,
-    ),
+    uiFontFamily: normalizedUiFontFamily,
+    chatFontFamily: normalizedChatFontFamily,
+    codeFontFamily: normalizedCodeFontFamily,
     codeFontSize: clampCodeFontSize(settings.codeFontSize),
     personality: allowedPersonality.has(settings.personality)
       ? settings.personality
@@ -290,12 +316,11 @@ export function useAppSettings() {
       try {
         const response = await getAppSettings();
         if (active) {
-          setSettings(
-            normalizeAppSettings({
-              ...defaultSettings,
-              ...response,
-            }),
-          );
+          const normalized = normalizeAppSettings({
+            ...defaultSettings,
+            ...response,
+          });
+          setSettings(normalized);
         }
       } catch {
         // Defaults stay in place if loading settings fails.

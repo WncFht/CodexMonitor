@@ -115,9 +115,11 @@ const baseSettings: AppSettings = {
   threadTitleAutogenerationEnabled: false,
   automaticAppUpdateChecksEnabled: true,
   uiFontFamily:
-    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    "'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font', '霞鹜文楷等宽', 'LXGW WenKai Mono'",
+  chatFontFamily:
+    "'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font', '霞鹜文楷等宽', 'LXGW WenKai Mono'",
   codeFontFamily:
-    'ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    "'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font', '霞鹜文楷等宽', 'LXGW WenKai Mono'",
   codeFontSize: 11,
   notificationSoundsEnabled: true,
   systemNotificationsEnabled: true,
@@ -657,6 +659,20 @@ describe("SettingsView Display", () => {
       );
     });
 
+    const chatFontInput = screen.getByLabelText("Chat font family");
+    fireEvent.change(chatFontInput, {
+      target: { value: "JetBrainsMono Nerd Font Mono, monospace" },
+    });
+    fireEvent.blur(chatFontInput);
+
+    await waitFor(() => {
+      expect(onUpdateAppSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          chatFontFamily: "JetBrainsMono Nerd Font Mono, monospace",
+        }),
+      );
+    });
+
     const codeFontInput = screen.getByLabelText("Code font family");
     fireEvent.change(codeFontInput, {
       target: { value: "JetBrains Mono, monospace" },
@@ -674,19 +690,33 @@ describe("SettingsView Display", () => {
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
     renderDisplaySection({ onUpdateAppSettings });
 
-    const resetButtons = screen.getAllByRole("button", { name: "Reset" });
-    fireEvent.click(resetButtons[1]);
-    fireEvent.click(resetButtons[2]);
+    const uiReset = within(
+      screen.getByLabelText("UI font family").closest(".settings-field-row") as HTMLElement,
+    ).getByRole("button", { name: "Reset" });
+    const chatReset = within(
+      screen.getByLabelText("Chat font family").closest(".settings-field-row") as HTMLElement,
+    ).getByRole("button", { name: "Reset" });
+    const codeReset = within(
+      screen.getByLabelText("Code font family").closest(".settings-field-row") as HTMLElement,
+    ).getByRole("button", { name: "Reset" });
+    fireEvent.click(uiReset);
+    fireEvent.click(chatReset);
+    fireEvent.click(codeReset);
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          uiFontFamily: expect.stringContaining("system-ui"),
+          uiFontFamily: expect.stringContaining("JetBrainsMono Nerd Font Mono"),
         }),
       );
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          codeFontFamily: expect.stringContaining("ui-monospace"),
+          chatFontFamily: expect.stringContaining("JetBrainsMono Nerd Font Mono"),
+        }),
+      );
+      expect(onUpdateAppSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          codeFontFamily: expect.stringContaining("JetBrainsMono Nerd Font Mono"),
         }),
       );
     });

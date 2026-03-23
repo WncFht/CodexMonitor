@@ -7,8 +7,8 @@ export function useCodeCssVars(appSettings: AppSettings) {
       return;
     }
     const root = document.documentElement;
+    root.style.setProperty("--chat-font-family", appSettings.chatFontFamily);
     root.style.setProperty("--code-font-family", appSettings.codeFontFamily);
     root.style.setProperty("--code-font-size", `${appSettings.codeFontSize}px`);
-  }, [appSettings.codeFontFamily, appSettings.codeFontSize]);
+  }, [appSettings.chatFontFamily, appSettings.codeFontFamily, appSettings.codeFontSize]);
 }
-

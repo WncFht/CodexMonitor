@@ -275,6 +275,7 @@ export type AppSettings = {
   threadTitleAutogenerationEnabled: boolean;
   automaticAppUpdateChecksEnabled: boolean;
   uiFontFamily: string;
+  chatFontFamily: string;
   codeFontFamily: string;
   codeFontSize: number;
   notificationSoundsEnabled: boolean;

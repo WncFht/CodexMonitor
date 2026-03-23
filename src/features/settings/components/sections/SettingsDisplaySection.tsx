@@ -1,6 +1,7 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type { AppSettings } from "@/types";
 import {
+  DEFAULT_CHAT_FONT_FAMILY,
   CODE_FONT_SIZE_MAX,
   CODE_FONT_SIZE_MIN,
   CODE_FONT_SIZE_DEFAULT,
@@ -29,6 +30,7 @@ type SettingsDisplaySectionProps = {
   scaleShortcutText: string;
   scaleDraft: string;
   uiFontDraft: string;
+  chatFontDraft?: string;
   codeFontDraft: string;
   codeFontSizeDraft: number;
   onUpdateAppSettings: (next: AppSettings) => Promise<void>;
@@ -38,6 +40,8 @@ type SettingsDisplaySectionProps = {
   onResetScale: () => Promise<void>;
   onSetUiFontDraft: Dispatch<SetStateAction<string>>;
   onCommitUiFont: () => Promise<void>;
+  onSetChatFontDraft?: Dispatch<SetStateAction<string>>;
+  onCommitChatFont?: () => Promise<void>;
   onSetCodeFontDraft: Dispatch<SetStateAction<string>>;
   onCommitCodeFont: () => Promise<void>;
   onSetCodeFontSizeDraft: Dispatch<SetStateAction<number>>;
@@ -53,6 +57,7 @@ export function SettingsDisplaySection({
   scaleShortcutText,
   scaleDraft,
   uiFontDraft,
+  chatFontDraft = appSettings.chatFontFamily ?? DEFAULT_CHAT_FONT_FAMILY,
   codeFontDraft,
   codeFontSizeDraft,
   onUpdateAppSettings,
@@ -62,6 +67,8 @@ export function SettingsDisplaySection({
   onResetScale,
   onSetUiFontDraft,
   onCommitUiFont,
+  onSetChatFontDraft = (() => {}) as Dispatch<SetStateAction<string>>,
+  onCommitChatFont = async () => {},
   onSetCodeFontDraft,
   onCommitCodeFont,
   onSetCodeFontSizeDraft,
@@ -416,7 +423,46 @@ export function SettingsDisplaySection({
           </button>
         </div>
         <div className="settings-help">
-          Applies to all UI text. Leave empty to use the default system font stack.
+          Applies to all UI text. Leave empty to use the built-in VS Code-style font stack.
+        </div>
+      </div>
+      <div className="settings-field">
+        <label className="settings-field-label" htmlFor="chat-font-family">
+          Chat font family
+        </label>
+        <div className="settings-field-row">
+          <input
+            id="chat-font-family"
+            type="text"
+            className="settings-input"
+            value={chatFontDraft}
+            onChange={(event) => onSetChatFontDraft(event.target.value)}
+            onBlur={() => {
+              void onCommitChatFont();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void onCommitChatFont();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="ghost settings-button-compact"
+            onClick={() => {
+              onSetChatFontDraft(DEFAULT_CHAT_FONT_FAMILY);
+              void onUpdateAppSettings({
+                ...appSettings,
+                chatFontFamily: DEFAULT_CHAT_FONT_FAMILY,
+              });
+            }}
+          >
+            Reset
+          </button>
+        </div>
+        <div className="settings-help">
+          Applies to chat messages, the composer, and workspace prompt editors.
         </div>
       </div>
       <div className="settings-field">

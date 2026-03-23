@@ -1,15 +1,17 @@
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family: 'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font',
+    '霞鹜文楷等宽', 'LXGW WenKai Mono';
   color: var(--text-primary);
   background-color: transparent;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color-scheme: light dark;
-  --ui-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --code-font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo,
-    Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --ui-font-family: 'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font',
+    '霞鹜文楷等宽', 'LXGW WenKai Mono';
+  --chat-font-family: 'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font',
+    '霞鹜文楷等宽', 'LXGW WenKai Mono';
+  --code-font-family: 'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font',
+    '霞鹜文楷等宽', 'LXGW WenKai Mono';
   --code-font-size: 11px;
   --code-font-weight: 400;
   --code-line-height: 1.28;

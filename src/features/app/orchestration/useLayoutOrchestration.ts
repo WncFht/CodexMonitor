@@ -20,7 +20,10 @@ type UseAppShellOrchestrationOptions = {
   planPanelHeight: number;
   terminalPanelHeight: number;
   debugPanelHeight: number;
-  appSettings: Pick<AppSettings, "uiFontFamily" | "codeFontFamily" | "codeFontSize">;
+  appSettings: Pick<
+    AppSettings,
+    "uiFontFamily" | "chatFontFamily" | "codeFontFamily" | "codeFontSize"
+  >;
 };
 
 export function useAppShellOrchestration({
@@ -66,6 +69,7 @@ export function useAppShellOrchestration({
       "--terminal-panel-height": `${terminalPanelHeight}px`,
       "--debug-panel-height": `${debugPanelHeight}px`,
       "--ui-font-family": appSettings.uiFontFamily,
+      "--chat-font-family": appSettings.chatFontFamily,
       "--code-font-family": appSettings.codeFontFamily,
       "--code-font-size": `${appSettings.codeFontSize}px`,
       "--sidebar-top-padding": isWindows ? "10px" : "36px",
@@ -92,6 +96,7 @@ export function useAppShellOrchestration({
         : {}),
     } as CSSProperties),
     [
+      appSettings.chatFontFamily,
       appSettings.codeFontFamily,
       appSettings.codeFontSize,
       appSettings.uiFontFamily,

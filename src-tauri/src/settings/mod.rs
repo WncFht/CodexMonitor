@@ -97,4 +97,5 @@ mod tests {
         updated.backend_mode = BackendMode::Local;
         assert!(!should_reset_remote_backend(&previous, &updated));
     }
+
 }

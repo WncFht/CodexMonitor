@@ -513,6 +513,8 @@ pub(crate) struct AppSettings {
     pub(crate) automatic_app_update_checks_enabled: bool,
     #[serde(default = "default_ui_font_family", rename = "uiFontFamily")]
     pub(crate) ui_font_family: String,
+    #[serde(default = "default_chat_font_family", rename = "chatFontFamily")]
+    pub(crate) chat_font_family: String,
     #[serde(default = "default_code_font_family", rename = "codeFontFamily")]
     pub(crate) code_font_family: String,
     #[serde(default = "default_code_font_size", rename = "codeFontSize")]
@@ -724,11 +726,16 @@ fn default_automatic_app_update_checks_enabled() -> bool {
 }
 
 fn default_ui_font_family() -> String {
-    "system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif".to_string()
+    "'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font', '霞鹜文楷等宽', 'LXGW WenKai Mono'"
+        .to_string()
+}
+
+fn default_chat_font_family() -> String {
+    default_ui_font_family()
 }
 
 fn default_code_font_family() -> String {
-    "ui-monospace, \"Cascadia Mono\", \"Segoe UI Mono\", Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace".to_string()
+    default_ui_font_family()
 }
 
 fn default_code_font_size() -> u8 {
@@ -1161,6 +1168,7 @@ impl Default for AppSettings {
             thread_title_autogeneration_enabled: false,
             automatic_app_update_checks_enabled: true,
             ui_font_family: default_ui_font_family(),
+            chat_font_family: default_chat_font_family(),
             code_font_family: default_code_font_family(),
             code_font_size: default_code_font_size(),
             notification_sounds_enabled: true,
@@ -1326,8 +1334,9 @@ mod tests {
         assert_eq!(settings.chat_history_scrollback_items, Some(200));
         assert!(!settings.thread_title_autogeneration_enabled);
         assert!(settings.automatic_app_update_checks_enabled);
-        assert!(settings.ui_font_family.contains("system-ui"));
-        assert!(settings.code_font_family.contains("ui-monospace"));
+        assert!(settings.ui_font_family.contains("JetBrainsMono Nerd Font Mono"));
+        assert!(settings.chat_font_family.contains("JetBrainsMono Nerd Font Mono"));
+        assert!(settings.code_font_family.contains("JetBrainsMono Nerd Font Mono"));
         assert_eq!(settings.code_font_size, 11);
         assert!(settings.notification_sounds_enabled);
         assert!(settings.system_notifications_enabled);

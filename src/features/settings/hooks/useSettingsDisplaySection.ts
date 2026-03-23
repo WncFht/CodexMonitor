@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { AppSettings } from "@/types";
 import { clampUiScale } from "@utils/uiScale";
 import {
+  DEFAULT_CHAT_FONT_FAMILY,
   DEFAULT_CODE_FONT_FAMILY,
   DEFAULT_UI_FONT_FAMILY,
   clampCodeFontSize,
@@ -27,6 +28,7 @@ export type SettingsDisplaySectionProps = {
   scaleShortcutText: string;
   scaleDraft: string;
   uiFontDraft: string;
+  chatFontDraft?: string;
   codeFontDraft: string;
   codeFontSizeDraft: number;
   onUpdateAppSettings: (next: AppSettings) => Promise<void>;
@@ -36,6 +38,8 @@ export type SettingsDisplaySectionProps = {
   onResetScale: () => Promise<void>;
   onSetUiFontDraft: Dispatch<SetStateAction<string>>;
   onCommitUiFont: () => Promise<void>;
+  onSetChatFontDraft?: Dispatch<SetStateAction<string>>;
+  onCommitChatFont?: () => Promise<void>;
   onSetCodeFontDraft: Dispatch<SetStateAction<string>>;
   onCommitCodeFont: () => Promise<void>;
   onSetCodeFontSizeDraft: Dispatch<SetStateAction<number>>;
@@ -58,6 +62,7 @@ export const useSettingsDisplaySection = ({
     `${Math.round(clampUiScale(appSettings.uiScale) * 100)}%`,
   );
   const [uiFontDraft, setUiFontDraft] = useState(appSettings.uiFontFamily);
+  const [chatFontDraft, setChatFontDraft] = useState(appSettings.chatFontFamily);
   const [codeFontDraft, setCodeFontDraft] = useState(appSettings.codeFontFamily);
   const [codeFontSizeDraft, setCodeFontSizeDraft] = useState(appSettings.codeFontSize);
 
@@ -68,6 +73,10 @@ export const useSettingsDisplaySection = ({
   useEffect(() => {
     setUiFontDraft(appSettings.uiFontFamily);
   }, [appSettings.uiFontFamily]);
+
+  useEffect(() => {
+    setChatFontDraft(appSettings.chatFontFamily);
+  }, [appSettings.chatFontFamily]);
 
   useEffect(() => {
     setCodeFontDraft(appSettings.codeFontFamily);
@@ -123,6 +132,18 @@ export const useSettingsDisplaySection = ({
     });
   };
 
+  const handleCommitChatFont = async () => {
+    const nextFont = normalizeFontFamily(chatFontDraft, DEFAULT_CHAT_FONT_FAMILY);
+    setChatFontDraft(nextFont);
+    if (nextFont === appSettings.chatFontFamily) {
+      return;
+    }
+    await onUpdateAppSettings({
+      ...appSettings,
+      chatFontFamily: nextFont,
+    });
+  };
+
   const handleCommitCodeFont = async () => {
     const nextFont = normalizeFontFamily(codeFontDraft, DEFAULT_CODE_FONT_FAMILY);
     setCodeFontDraft(nextFont);
@@ -154,6 +175,7 @@ export const useSettingsDisplaySection = ({
     scaleShortcutText,
     scaleDraft,
     uiFontDraft,
+    chatFontDraft,
     codeFontDraft,
     codeFontSizeDraft,
     onUpdateAppSettings,
@@ -163,6 +185,8 @@ export const useSettingsDisplaySection = ({
     onResetScale: handleResetScale,
     onSetUiFontDraft: setUiFontDraft,
     onCommitUiFont: handleCommitUiFont,
+    onSetChatFontDraft: setChatFontDraft,
+    onCommitChatFont: handleCommitChatFont,
     onSetCodeFontDraft: setCodeFontDraft,
     onCommitCodeFont: handleCommitCodeFont,
     onSetCodeFontSizeDraft: setCodeFontSizeDraft,

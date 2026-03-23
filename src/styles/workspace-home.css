@@ -171,7 +171,7 @@
   border: 1px solid var(--border-muted);
   background: var(--surface-1);
   color: var(--text-strong);
-  font-family: var(--code-font-family);
+  font-family: var(--chat-font-family);
   font-size: 13px;
   line-height: 1.5;
   padding: 10px 12px;
