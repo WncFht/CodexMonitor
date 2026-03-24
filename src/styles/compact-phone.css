@@ -37,16 +37,12 @@
 }
 
 .app.layout-phone .messages-full {
-  padding: 12px 16px 12px;
+  padding: 12px 16px calc(12px + var(--composer-overlay-height, 0px));
 }
 
 .app.layout-phone .composer {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   padding: 10px 12px calc(10px + var(--phone-composer-safe-bottom, 0px));
   border-top: 1px solid var(--border-subtle);
-  backdrop-filter: blur(18px) saturate(1.1);
 }
 
 html[data-mobile-composer-focus="true"] .app.layout-phone {

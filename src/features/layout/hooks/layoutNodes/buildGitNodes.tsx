@@ -27,27 +27,28 @@ function resolveGitDiffStyle({
   return shouldForceSingleColumn ? "unified" : userPreference;
 }
 
-export function buildGitNodes(options: GitLayoutNodesOptions): GitLayoutNodes {
-  const sidebarSelectedDiffPath =
+function buildGitDiffPanelNode(options: GitLayoutNodesOptions) {
+  const selectedDiffPath =
     options.diffViewProps.centerMode === "diff"
       ? options.gitDiffViewerProps.selectedPath
       : null;
 
-  let gitDiffPanelNode;
   if (options.filePanelMode === "files" && options.fileTreeProps) {
-    gitDiffPanelNode = <FileTreePanel {...options.fileTreeProps} />;
-  } else if (options.filePanelMode === "prompts") {
-    gitDiffPanelNode = <PromptPanel {...options.promptPanelProps} />;
-  } else {
-    gitDiffPanelNode = (
-      <GitDiffPanel
-        {...options.gitDiffPanelProps}
-        selectedPath={sidebarSelectedDiffPath}
-      />
-    );
+    return <FileTreePanel {...options.fileTreeProps} />;
   }
+  if (options.filePanelMode === "prompts") {
+    return <PromptPanel {...options.promptPanelProps} />;
+  }
+  return (
+    <GitDiffPanel
+      {...options.gitDiffPanelProps}
+      selectedPath={selectedDiffPath}
+    />
+  );
+}
 
-  const gitDiffViewerNode = (
+function buildGitDiffViewerNode(options: GitLayoutNodesOptions) {
+  return (
     <GitDiffViewer
       {...options.gitDiffViewerProps}
       diffStyle={resolveGitDiffStyle({
@@ -58,9 +59,11 @@ export function buildGitNodes(options: GitLayoutNodesOptions): GitLayoutNodes {
       })}
     />
   );
+}
 
+export function buildGitNodes(options: GitLayoutNodesOptions): GitLayoutNodes {
   return {
-    gitDiffPanelNode,
-    gitDiffViewerNode,
+    gitDiffPanelNode: buildGitDiffPanelNode(options),
+    gitDiffViewerNode: buildGitDiffViewerNode(options),
   };
 }

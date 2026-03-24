@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -13,26 +13,15 @@ import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import Mic from "lucide-react/dist/esm/icons/mic";
 import Square from "lucide-react/dist/esm/icons/square";
 import X from "lucide-react/dist/esm/icons/x";
-import Brain from "lucide-react/dist/esm/icons/brain";
-import GitFork from "lucide-react/dist/esm/icons/git-fork";
-import PlusCircle from "lucide-react/dist/esm/icons/plus-circle";
-import Plus from "lucide-react/dist/esm/icons/plus";
-import Info from "lucide-react/dist/esm/icons/info";
-import RotateCcw from "lucide-react/dist/esm/icons/rotate-ccw";
-import ScrollText from "lucide-react/dist/esm/icons/scroll-text";
-import Wrench from "lucide-react/dist/esm/icons/wrench";
-import FileText from "lucide-react/dist/esm/icons/file-text";
-import Plug from "lucide-react/dist/esm/icons/plug";
 import { useComposerImageDrop } from "../hooks/useComposerImageDrop";
-import {
-  PopoverMenuItem,
-  PopoverSurface,
-} from "../../design-system/components/popover/PopoverPrimitives";
+import { ComposerMobileActionsMenu } from "./ComposerMobileActionsMenu";
+import { ComposerSuggestionsPopover } from "./ComposerSuggestionsPopover";
 import { ComposerAttachments } from "./ComposerAttachments";
 import { DictationWaveform } from "../../dictation/components/DictationWaveform";
-import { ReviewInlinePrompt } from "./ReviewInlinePrompt";
+import { useComposerDictationControls } from "../hooks/useComposerDictationControls";
+import { useComposerInputLayout } from "../hooks/useComposerInputLayout";
+import { useComposerMobileActions } from "../hooks/useComposerMobileActions";
 import type { ReviewPromptState, ReviewPromptStep } from "../../threads/hooks/useReviewPrompt";
-import { getFileTypeIconUrl } from "../../../utils/fileTypeIcons";
 
 type ComposerInputProps = {
   text: string;
@@ -92,51 +81,6 @@ type ComposerInputProps = {
   onReviewPromptConfirmCustom?: () => Promise<void>;
 };
 
-const isFileSuggestion = (item: AutocompleteItem) => item.group === "Files";
-
-const suggestionIcon = (item: AutocompleteItem) => {
-  if (isFileSuggestion(item)) {
-    return FileText;
-  }
-  if (item.id.startsWith("skill:")) {
-    return Wrench;
-  }
-  if (item.id.startsWith("app:")) {
-    return Plug;
-  }
-  if (item.id === "review") {
-    return Brain;
-  }
-  if (item.id === "fork") {
-    return GitFork;
-  }
-  if (item.id === "mcp") {
-    return Plug;
-  }
-  if (item.id === "apps") {
-    return Plug;
-  }
-  if (item.id === "new") {
-    return PlusCircle;
-  }
-  if (item.id === "resume") {
-    return RotateCcw;
-  }
-  if (item.id === "status") {
-    return Info;
-  }
-  if (item.id.startsWith("prompt:")) {
-    return ScrollText;
-  }
-  return Wrench;
-};
-
-const fileTitle = (path: string) => {
-  const normalized = path.replace(/\\/g, "/");
-  const parts = normalized.split("/").filter(Boolean);
-  return parts.length ? parts[parts.length - 1] : path;
-};
-
 export function ComposerInput({
   text,
   disabled,
@@ -194,11 +138,13 @@ export function ComposerInput({
 }: ComposerInputProps) {
   const suggestionListRef = useRef<HTMLDivElement | null>(null);
   const suggestionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const mobileActionsRef = useRef<HTMLDivElement | null>(null);
-  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
-  const [isPhoneLayout, setIsPhoneLayout] = useState(false);
-  const [isPhoneTallInput, setIsPhoneTallInput] = useState(false);
-  const reviewPromptOpen = Boolean(reviewPrompt);
+  const { isPhoneLayout, isPhoneTallInput } = useComposerInputLayout({
+    isExpanded,
+    text,
+    textareaRef,
+  });
+  const { mobileActionsOpen, mobileActionsRef, setMobileActionsOpen } =
+    useComposerMobileActions({ disabled });
   const {
     dropTargetRef,
     isDragOver,
@@ -211,179 +157,29 @@ export function ComposerInput({
     disabled,
     onAttachImages,
   });
-
-  useEffect(() => {
-    if (!suggestionsOpen || suggestions.length === 0) {
-      return;
-    }
-    const list = suggestionListRef.current;
-    const item = suggestionRefs.current[highlightIndex];
-    if (!list || !item) {
-      return;
-    }
-    const listRect = list.getBoundingClientRect();
-    const itemRect = item.getBoundingClientRect();
-    if (itemRect.top < listRect.top) {
-      item.scrollIntoView({ block: "nearest" });
-      return;
-    }
-    if (itemRect.bottom > listRect.bottom) {
-      item.scrollIntoView({ block: "nearest" });
-    }
-  }, [highlightIndex, suggestionsOpen, suggestions.length]);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    const appRoot = textarea.closest(".app");
-    if (!(appRoot instanceof HTMLElement)) {
-      setIsPhoneLayout(false);
-      return;
-    }
-
-    const syncLayout = () => {
-      const nextIsPhoneLayout = appRoot.classList.contains("layout-phone");
-      setIsPhoneLayout((prev) => (prev === nextIsPhoneLayout ? prev : nextIsPhoneLayout));
-    };
-
-    syncLayout();
-    const observer = new MutationObserver((records) => {
-      if (records.some((record) => record.attributeName === "class")) {
-        syncLayout();
-      }
-    });
-    observer.observe(appRoot, { attributes: true, attributeFilter: ["class"] });
-    return () => {
-      observer.disconnect();
-    };
-  }, [textareaRef]);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    const minTextareaHeight = isExpanded ? (isPhoneLayout ? 152 : 180) : isPhoneLayout ? 52 : 60;
-    const maxTextareaHeight = isExpanded ? (isPhoneLayout ? 280 : 320) : isPhoneLayout ? 168 : 120;
-    textarea.style.height = "auto";
-    textarea.style.minHeight = `${minTextareaHeight}px`;
-    textarea.style.maxHeight = `${maxTextareaHeight}px`;
-    const nextHeight = Math.min(
-      Math.max(textarea.scrollHeight, minTextareaHeight),
-      maxTextareaHeight,
-    );
-    textarea.style.height = `${nextHeight}px`;
-    textarea.style.overflowY =
-      textarea.scrollHeight > maxTextareaHeight ? "auto" : "hidden";
-
-    if (!isPhoneLayout) {
-      setIsPhoneTallInput((prev) => (prev ? false : prev));
-      return;
-    }
-
-    const computedStyle = window.getComputedStyle(textarea);
-    const lineHeight = Number.parseFloat(computedStyle.lineHeight) || 20;
-    const paddingTop = Number.parseFloat(computedStyle.paddingTop) || 0;
-    const paddingBottom = Number.parseFloat(computedStyle.paddingBottom) || 0;
-    const contentHeight = Math.max(0, nextHeight - paddingTop - paddingBottom);
-    const estimatedLineCount = contentHeight / lineHeight;
-    const nextIsPhoneTallInput = estimatedLineCount > 2.25;
-    setIsPhoneTallInput((prev) => (prev === nextIsPhoneTallInput ? prev : nextIsPhoneTallInput));
-  }, [isExpanded, isPhoneLayout, text, textareaRef]);
-
-  useEffect(() => {
-    if (!mobileActionsOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (target && mobileActionsRef.current?.contains(target)) {
-        return;
-      }
-      setMobileActionsOpen(false);
-    };
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMobileActionsOpen(false);
-      }
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [mobileActionsOpen]);
-
-  useEffect(() => {
-    if (disabled && mobileActionsOpen) {
-      setMobileActionsOpen(false);
-    }
-  }, [disabled, mobileActionsOpen]);
-
   const handleActionClick = useCallback(() => {
     if (canStop) {
       onStop();
-    } else {
-      onSend();
+      return;
     }
+    onSend();
   }, [canStop, onSend, onStop]);
-  const isDictating = dictationState === "listening";
-  const isDictationProcessing = dictationState === "processing";
-  const isDictationBusy = dictationState !== "idle";
-  const allowOpenDictationSettings = Boolean(
-    onOpenDictationSettings && !dictationEnabled && !disabled && !isDictationProcessing,
-  );
-  const micDisabled =
-    disabled ||
-    (!allowOpenDictationSettings &&
-      (isDictationProcessing
-        ? !onCancelDictation
-        : !dictationEnabled || !onToggleDictation));
-  const micAriaLabel = allowOpenDictationSettings
-    ? "Open dictation settings"
-    : isDictationProcessing
-      ? "Cancel transcription"
-      : isDictating
-        ? "Stop dictation"
-        : "Start dictation";
-  const micTitle = allowOpenDictationSettings
-    ? "Dictation disabled. Open settings"
-    : isDictationProcessing
-      ? "Cancel transcription"
-      : isDictating
-        ? "Stop dictation"
-        : "Start dictation";
-  const handleMicClick = useCallback(() => {
-    if (isDictationProcessing) {
-      if (disabled || !onCancelDictation) {
-        return;
-      }
-      onCancelDictation();
-      return;
-    }
-    if (allowOpenDictationSettings) {
-      onOpenDictationSettings?.();
-      return;
-    }
-    if (!onToggleDictation || micDisabled) {
-      return;
-    }
-    onToggleDictation();
-  }, [
-    disabled,
+  const {
+    handleMicClick,
+    isDictating,
+    isDictationBusy,
     isDictationProcessing,
-    allowOpenDictationSettings,
-    onCancelDictation,
+    micAriaLabel,
     micDisabled,
-    onOpenDictationSettings,
+    micTitle,
+  } = useComposerDictationControls({
+    disabled,
+    dictationEnabled,
+    dictationState,
     onToggleDictation,
-  ]);
+    onCancelDictation,
+    onOpenDictationSettings,
+  });
 
   const handleTextareaChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -456,66 +252,25 @@ export function ComposerInput({
           >
             <ImagePlus size={14} aria-hidden />
           </button>
-          <div
-            className={`composer-mobile-menu${mobileActionsOpen ? " is-open" : ""}`}
-            ref={mobileActionsRef}
-          >
-            <button
-              type="button"
-              className="composer-action composer-action--mobile-menu"
-              onClick={() => setMobileActionsOpen((prev) => !prev)}
-              disabled={disabled}
-              aria-expanded={mobileActionsOpen}
-              aria-haspopup="menu"
-              aria-label="More actions"
-              title="More actions"
-            >
-              <Plus size={14} aria-hidden />
-            </button>
-            {mobileActionsOpen && (
-              <PopoverSurface className="composer-mobile-actions-popover" role="menu">
-                <PopoverMenuItem
-                  onClick={handleMobileAttachClick}
-                  disabled={disabled || !onAddAttachment}
-                  icon={<ImagePlus size={14} />}
-                >
-                  Add image
-                </PopoverMenuItem>
-                {onToggleExpand && (
-                  <PopoverMenuItem
-                    onClick={handleMobileExpandClick}
-                    disabled={disabled}
-                    icon={
-                      isExpanded ? (
-                        <ChevronDown size={14} />
-                      ) : (
-                        <ChevronUp size={14} />
-                      )
-                    }
-                  >
-                    {isExpanded ? "Collapse input" : "Expand input"}
-                  </PopoverMenuItem>
-                )}
-                {(onToggleDictation || onOpenDictationSettings || onCancelDictation) && (
-                  <PopoverMenuItem
-                    onClick={handleMobileDictationClick}
-                    disabled={micDisabled}
-                    icon={
-                      isDictationProcessing ? (
-                        <X size={14} />
-                      ) : isDictating ? (
-                        <Square size={14} />
-                      ) : (
-                        <Mic size={14} />
-                      )
-                    }
-                  >
-                    {micAriaLabel}
-                  </PopoverMenuItem>
-                )}
-              </PopoverSurface>
+          <ComposerMobileActionsMenu
+            disabled={disabled}
+            handleMobileAttachClick={handleMobileAttachClick}
+            handleMobileDictationClick={handleMobileDictationClick}
+            handleMobileExpandClick={handleMobileExpandClick}
+            isDictating={isDictating}
+            isDictationProcessing={isDictationProcessing}
+            isExpanded={isExpanded}
+            micAriaLabel={micAriaLabel}
+            micDisabled={micDisabled}
+            mobileActionsOpen={mobileActionsOpen}
+            mobileActionsRef={mobileActionsRef}
+            onAddAttachment={onAddAttachment}
+            onToggleExpand={onToggleExpand}
+            setMobileActionsOpen={setMobileActionsOpen}
+            showDictationAction={Boolean(
+              onToggleDictation || onOpenDictationSettings || onCancelDictation,
             )}
-          </div>
+          />
           <textarea
             ref={textareaRef}
             placeholder={
@@ -630,128 +385,34 @@ export function ComposerInput({
             )}
           </div>
         )}
-        {suggestionsOpen && (
-          <PopoverSurface
-            className={`composer-suggestions${
-              reviewPromptOpen ? " review-inline-suggestions" : ""
-            }`}
-            role="listbox"
-            ref={suggestionListRef}
-            style={suggestionsStyle}
-          >
-            {reviewPromptOpen &&
-            reviewPrompt &&
-            onReviewPromptClose &&
-            onReviewPromptShowPreset &&
-            onReviewPromptChoosePreset &&
-            highlightedPresetIndex !== undefined &&
-            onReviewPromptHighlightPreset &&
-            highlightedBranchIndex !== undefined &&
-            onReviewPromptHighlightBranch &&
-            highlightedCommitIndex !== undefined &&
-            onReviewPromptHighlightCommit &&
-            onReviewPromptSelectBranch &&
-            onReviewPromptSelectBranchAtIndex &&
-            onReviewPromptConfirmBranch &&
-            onReviewPromptSelectCommit &&
-            onReviewPromptSelectCommitAtIndex &&
-            onReviewPromptConfirmCommit &&
-            onReviewPromptUpdateCustomInstructions &&
-            onReviewPromptConfirmCustom ? (
-              <ReviewInlinePrompt
-                reviewPrompt={reviewPrompt}
-                onClose={onReviewPromptClose}
-                onShowPreset={onReviewPromptShowPreset}
-                onChoosePreset={onReviewPromptChoosePreset}
-                highlightedPresetIndex={highlightedPresetIndex}
-                onHighlightPreset={onReviewPromptHighlightPreset}
-                highlightedBranchIndex={highlightedBranchIndex}
-                onHighlightBranch={onReviewPromptHighlightBranch}
-                highlightedCommitIndex={highlightedCommitIndex}
-                onHighlightCommit={onReviewPromptHighlightCommit}
-                onSelectBranch={onReviewPromptSelectBranch}
-                onSelectBranchAtIndex={onReviewPromptSelectBranchAtIndex}
-                onConfirmBranch={onReviewPromptConfirmBranch}
-                onSelectCommit={onReviewPromptSelectCommit}
-                onSelectCommitAtIndex={onReviewPromptSelectCommitAtIndex}
-                onConfirmCommit={onReviewPromptConfirmCommit}
-                onUpdateCustomInstructions={onReviewPromptUpdateCustomInstructions}
-                onConfirmCustom={onReviewPromptConfirmCustom}
-              />
-            ) : (
-              suggestions.map((item, index) => {
-                const prevGroup = suggestions[index - 1]?.group;
-                const showGroup = Boolean(item.group && item.group !== prevGroup);
-                return (
-                  <div key={item.id}>
-                    {showGroup && (
-                      <div className="composer-suggestion-section">{item.group}</div>
-                    )}
-                    <button
-                      type="button"
-                      className={`composer-suggestion${
-                        index === highlightIndex ? " is-active" : ""
-                      }`}
-                      role="option"
-                      aria-selected={index === highlightIndex}
-                      ref={(node) => {
-                        suggestionRefs.current[index] = node;
-                      }}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => onSelectSuggestion(item)}
-                      onMouseEnter={() => onHighlightIndex(index)}
-                    >
-                      {(() => {
-                        const Icon = suggestionIcon(item);
-                        const fileSuggestion = isFileSuggestion(item);
-                        const skillSuggestion = item.id.startsWith("skill:");
-                        const title = fileSuggestion ? fileTitle(item.label) : item.label;
-                        const description = fileSuggestion ? item.label : item.description;
-                        const fileTypeIconUrl = fileSuggestion
-                          ? getFileTypeIconUrl(item.label)
-                          : null;
-                        return (
-                          <span className="composer-suggestion-row">
-                            <span className="composer-suggestion-icon" aria-hidden>
-                              {fileTypeIconUrl ? (
-                                <img
-                                  className="composer-suggestion-icon-image"
-                                  src={fileTypeIconUrl}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <Icon size={14} />
-                              )}
-                            </span>
-                            <span className="composer-suggestion-content">
-                              <span className="composer-suggestion-title">{title}</span>
-                              {description && (
-                                <span
-                                  className={`composer-suggestion-description${
-                                    skillSuggestion ? " composer-suggestion-description--skill" : ""
-                                  }`}
-                                >
-                                  {description}
-                                </span>
-                              )}
-                              {!fileSuggestion && item.hint && (
-                                <span className="composer-suggestion-description">
-                                  {item.hint}
-                                </span>
-                              )}
-                            </span>
-                          </span>
-                        );
-                      })()}
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </PopoverSurface>
-        )}
+        <ComposerSuggestionsPopover
+          highlightIndex={highlightIndex}
+          highlightedBranchIndex={highlightedBranchIndex}
+          highlightedCommitIndex={highlightedCommitIndex}
+          highlightedPresetIndex={highlightedPresetIndex}
+          onHighlightIndex={onHighlightIndex}
+          onReviewPromptChoosePreset={onReviewPromptChoosePreset}
+          onReviewPromptClose={onReviewPromptClose}
+          onReviewPromptConfirmBranch={onReviewPromptConfirmBranch}
+          onReviewPromptConfirmCommit={onReviewPromptConfirmCommit}
+          onReviewPromptConfirmCustom={onReviewPromptConfirmCustom}
+          onReviewPromptHighlightBranch={onReviewPromptHighlightBranch}
+          onReviewPromptHighlightCommit={onReviewPromptHighlightCommit}
+          onReviewPromptHighlightPreset={onReviewPromptHighlightPreset}
+          onReviewPromptSelectBranch={onReviewPromptSelectBranch}
+          onReviewPromptSelectBranchAtIndex={onReviewPromptSelectBranchAtIndex}
+          onReviewPromptSelectCommit={onReviewPromptSelectCommit}
+          onReviewPromptSelectCommitAtIndex={onReviewPromptSelectCommitAtIndex}
+          onReviewPromptShowPreset={onReviewPromptShowPreset}
+          onReviewPromptUpdateCustomInstructions={onReviewPromptUpdateCustomInstructions}
+          onSelectSuggestion={onSelectSuggestion}
+          reviewPrompt={reviewPrompt}
+          suggestionListRef={suggestionListRef}
+          suggestionRefs={suggestionRefs}
+          suggestions={suggestions}
+          suggestionsOpen={suggestionsOpen}
+          suggestionsStyle={suggestionsStyle}
+        />
       </div>
     </div>
   );

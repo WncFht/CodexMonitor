@@ -80,11 +80,12 @@
 .git-panel-overview {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 18px;
-  border: 1px solid var(--cm-border-default);
-  background: var(--cm-surface-panel-soft);
+  gap: 10px;
+  padding: 0 0 12px;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--cm-border-soft);
+  background: transparent;
 }
 
 .git-panel-overview-status {
@@ -280,7 +281,7 @@
 .git-root-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
 .git-root-item {
@@ -289,25 +290,24 @@
   gap: 8px;
   width: 100%;
   text-align: left;
-  border: 1px solid var(--cm-border-soft);
-  background: var(--cm-surface-row);
+  border: 0;
+  background: transparent;
   color: var(--text-emphasis);
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 9px 10px;
+  border-radius: 12px;
   font-size: 12px;
   box-shadow: none;
   transform: none;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background 160ms ease;
 }
 
 .git-root-item.active {
   background: var(--cm-surface-panel-active);
-  border-color: var(--cm-border-accent-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cm-border-accent) 55%, transparent);
 }
 
 .git-root-item:hover {
   background: var(--cm-surface-panel-hover);
-  border-color: var(--cm-border-hover);
   box-shadow: none;
   transform: none;
 }
@@ -350,11 +350,16 @@
 .diff-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 18px;
-  background: var(--cm-surface-panel-soft);
-  border: 1px solid var(--cm-border-default);
+  gap: 8px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+}
+
+.diff-section + .diff-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--cm-border-soft);
 }
 
 .diff-section-title {
@@ -409,13 +414,13 @@
 .diff-section-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
 .per-file-tree {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
@@ -426,10 +431,14 @@
 }
 
 .per-file-group {
-  border: 1px solid var(--cm-border-default);
-  border-radius: 16px;
-  background: var(--cm-surface-panel-soft);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.per-file-group + .per-file-group {
+  padding-top: 12px;
+  border-top: 1px solid var(--cm-border-soft);
 }
 
 .per-file-group-row {
@@ -441,7 +450,8 @@
   border: 0;
   background: transparent;
   color: var(--text-emphasis);
-  padding: 12px 14px;
+  padding: 9px 10px;
+  border-radius: 12px;
   cursor: pointer;
   text-align: left;
   box-shadow: none;
@@ -481,39 +491,38 @@
 .per-file-edit-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 12px 12px 26px;
-  border-top: 1px solid var(--cm-border-soft);
+  gap: 2px;
+  padding: 0 0 0 22px;
+  border-top: 0;
 }
 
 .per-file-edit-row {
   width: 100%;
-  border: 1px solid var(--border-muted);
+  border: 0;
   border-radius: 12px;
-  background: var(--cm-surface-row);
+  background: transparent;
   color: var(--text-emphasis);
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 9px 10px;
+  padding: 8px 10px;
   cursor: pointer;
   text-align: left;
   box-shadow: none;
   transform: none;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background 160ms ease;
 }
 
 .per-file-edit-row:hover {
   background: var(--cm-surface-panel-hover);
-  border-color: var(--cm-border-hover);
   box-shadow: none;
   transform: none;
 }
 
 .per-file-edit-row.active {
   background: var(--cm-surface-panel-active);
-  border-color: var(--cm-border-accent-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cm-border-accent) 55%, transparent);
 }
 
 .per-file-edit-status {
@@ -632,12 +641,12 @@
   grid-template-columns: 16px minmax(0, 1fr) auto;
   column-gap: 8px;
   align-items: center;
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-radius: 12px;
   cursor: pointer;
-  border: 1px solid var(--cm-border-soft);
-  background: var(--cm-surface-row);
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  border: 0;
+  background: transparent;
+  transition: background 160ms ease, box-shadow 160ms ease;
 }
 
 .diff-row-meta {
@@ -650,19 +659,16 @@
 
 .diff-row:hover {
   background: var(--cm-surface-panel-hover);
-  border-color: var(--cm-border-hover);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cm-border-hover) 60%, transparent);
+  box-shadow: none;
 }
 
 .diff-row.active {
   background: var(--cm-surface-panel-active);
-  border-color: var(--cm-border-accent-strong);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cm-border-accent) 65%, transparent);
 }
 
 .diff-row.selected {
   background: var(--cm-surface-panel);
-  border-color: var(--cm-border-default);
 }
 
 .diff-row.selected.active {
@@ -946,6 +952,11 @@
   gap: 8px;
 }
 
+.git-log-section + .git-log-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--cm-border-soft);
+}
+
 .git-log-section-title {
   font-size: 11px;
   font-weight: 700;
@@ -957,7 +968,7 @@
 .git-log-section-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
 .git-log-entry,
@@ -966,19 +977,18 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 11px 12px;
-  border: 1px solid var(--cm-border-soft);
-  border-radius: 14px;
-  background: var(--cm-surface-row);
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   color: inherit;
   text-decoration: none;
-  cursor: pointer;
   text-align: left;
   cursor: pointer;
   box-shadow: none;
   outline: none;
   transform: none;
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: background 160ms ease, box-shadow 160ms ease;
   min-width: 0;
 }
 
@@ -989,8 +999,7 @@
 .git-pr-entry:hover,
 .git-pr-entry:focus-visible {
   background: var(--cm-surface-panel-hover);
-  border-color: var(--cm-border-hover);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cm-border-hover) 60%, transparent);
+  box-shadow: none;
   outline: none;
   transform: none;
 }
@@ -998,7 +1007,6 @@
 .git-log-entry.active,
 .git-pr-entry.active {
   background: var(--cm-surface-panel-active);
-  border-color: var(--cm-border-accent-strong);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cm-border-accent) 65%, transparent);
 }
 

@@ -101,7 +101,7 @@
 }
 
 .app.layout-tablet .messages-full {
-  padding: 12px 20px 16px;
+  padding: 12px 20px calc(16px + var(--composer-overlay-height, 0px));
 }
 
 .app.layout-tablet .composer {

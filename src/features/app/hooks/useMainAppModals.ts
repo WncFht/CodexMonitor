@@ -149,6 +149,211 @@ type UseMainAppModalsResult = {
   };
 };
 
+type BuildSettingsViewPropsArgs = {
+  groupedWorkspaces: GroupedWorkspaceInfo;
+  workspaceGroups: WorkspaceGroup[];
+  ungroupedLabel: string;
+  settings: UseMainAppModalsArgs["settings"];
+};
+
+function buildSettingsViewProps({
+  groupedWorkspaces,
+  workspaceGroups,
+  ungroupedLabel,
+  settings,
+}: BuildSettingsViewPropsArgs): Omit<SettingsViewProps, "initialSection" | "onClose"> {
+  return {
+    workspaceGroups,
+    groupedWorkspaces,
+    ungroupedLabel,
+    onMoveWorkspace: settings.handleMoveWorkspace,
+    onDeleteWorkspace: (workspaceId) => {
+      void settings.removeWorkspace(workspaceId);
+    },
+    onCreateWorkspaceGroup: settings.createWorkspaceGroup,
+    onRenameWorkspaceGroup: settings.renameWorkspaceGroup,
+    onMoveWorkspaceGroup: settings.moveWorkspaceGroup,
+    onDeleteWorkspaceGroup: settings.deleteWorkspaceGroup,
+    onAssignWorkspaceGroup: settings.assignWorkspaceGroup,
+    reduceTransparency: settings.reduceTransparency,
+    onToggleTransparency: settings.setReduceTransparency,
+    appSettings: settings.appSettings,
+    openAppIconById: settings.openAppIconById,
+    onUpdateAppSettings: async (next) => {
+      await Promise.resolve(settings.queueSaveSettings(next));
+    },
+    onToggleAutomaticAppUpdateChecks:
+      settings.handleToggleAutomaticAppUpdateChecks,
+    onRunDoctor: settings.doctor,
+    onRunCodexUpdate: settings.codexUpdate,
+    onUpdateWorkspaceSettings: async (id, nextSettings) => {
+      await settings.updateWorkspaceSettings(id, nextSettings);
+    },
+    scaleShortcutTitle: settings.scaleShortcutTitle,
+    scaleShortcutText: settings.scaleShortcutText,
+    onTestNotificationSound: settings.handleTestNotificationSound,
+    onTestSystemNotification: settings.handleTestSystemNotification,
+    onMobileConnectSuccess: settings.handleMobileConnectSuccess,
+    dictationModelStatus: settings.dictationModel.status,
+    onDownloadDictationModel: settings.dictationModel.download,
+    onCancelDictationDownload: settings.dictationModel.cancel,
+    onRemoveDictationModel: settings.dictationModel.remove,
+  };
+}
+
+type BuildAppModalsPropsArgs = {
+  renamePrompt: AppModalsProps["renamePrompt"];
+  onRenamePromptChange: (value: string) => void;
+  onRenamePromptCancel: () => void;
+  onRenamePromptConfirm: () => void;
+  initGitRepoPrompt: AppModalsProps["initGitRepoPrompt"];
+  initGitRepoPromptBusy: boolean;
+  onInitGitRepoPromptBranchChange: (value: string) => void;
+  onInitGitRepoPromptCreateRemoteChange: (value: boolean) => void;
+  onInitGitRepoPromptRepoNameChange: (value: string) => void;
+  onInitGitRepoPromptPrivateChange: (value: boolean) => void;
+  onInitGitRepoPromptCancel: () => void;
+  onInitGitRepoPromptConfirm: () => void;
+  worktreePrompt: AppModalsProps["worktreePrompt"];
+  onWorktreePromptNameChange: (value: string) => void;
+  onWorktreePromptChange: (value: string) => void;
+  onWorktreePromptCopyAgentsMdChange: (value: boolean) => void;
+  onWorktreeSetupScriptChange: (value: string) => void;
+  onWorktreePromptCancel: () => void;
+  onWorktreePromptConfirm: () => void;
+  clonePrompt: AppModalsProps["clonePrompt"];
+  onClonePromptCopyNameChange: (value: string) => void;
+  onClonePromptChooseCopiesFolder: () => void;
+  onClonePromptUseSuggestedFolder: () => void;
+  onClonePromptClearCopiesFolder: () => void;
+  onClonePromptCancel: () => void;
+  onClonePromptConfirm: () => void;
+  workspaceFromUrl: AppModalsProps["workspaceFromUrlPrompt"] extends null
+    ? never
+    : Pick<
+        AppModalsProps,
+        | "workspaceFromUrlPrompt"
+        | "workspaceFromUrlCanSubmit"
+        | "onWorkspaceFromUrlPromptUrlChange"
+        | "onWorkspaceFromUrlPromptTargetFolderNameChange"
+        | "onWorkspaceFromUrlPromptChooseDestinationPath"
+        | "onWorkspaceFromUrlPromptClearDestinationPath"
+        | "onWorkspaceFromUrlPromptCancel"
+        | "onWorkspaceFromUrlPromptConfirm"
+      >;
+  mobileRemoteWorkspacePathPrompt: AppModalsProps["mobileRemoteWorkspacePathPrompt"];
+  onMobileRemoteWorkspacePathPromptChange: (value: string) => void;
+  onMobileRemoteWorkspacePathPromptRecentPathSelect: (path: string) => void;
+  onMobileRemoteWorkspacePathPromptCancel: () => void;
+  onMobileRemoteWorkspacePathPromptConfirm: () => void;
+  branchSwitcher: AppModalsProps["branchSwitcher"];
+  branches: BranchInfo[];
+  workspaces: WorkspaceInfo[];
+  activeWorkspace: WorkspaceInfo | null;
+  currentBranch: string | null;
+  onBranchSwitcherSelect: (branch: string, worktree: WorkspaceInfo | null) => void;
+  onBranchSwitcherCancel: () => void;
+  settingsOpen: boolean;
+  settingsSection: SettingsViewProps["initialSection"] | null;
+  onCloseSettings: () => void;
+  settingsViewComponent: ComponentType<SettingsViewProps>;
+  settingsViewProps: Omit<SettingsViewProps, "initialSection" | "onClose">;
+};
+
+function buildAppModalsProps({
+  renamePrompt,
+  onRenamePromptChange,
+  onRenamePromptCancel,
+  onRenamePromptConfirm,
+  initGitRepoPrompt,
+  initGitRepoPromptBusy,
+  onInitGitRepoPromptBranchChange,
+  onInitGitRepoPromptCreateRemoteChange,
+  onInitGitRepoPromptRepoNameChange,
+  onInitGitRepoPromptPrivateChange,
+  onInitGitRepoPromptCancel,
+  onInitGitRepoPromptConfirm,
+  worktreePrompt,
+  onWorktreePromptNameChange,
+  onWorktreePromptChange,
+  onWorktreePromptCopyAgentsMdChange,
+  onWorktreeSetupScriptChange,
+  onWorktreePromptCancel,
+  onWorktreePromptConfirm,
+  clonePrompt,
+  onClonePromptCopyNameChange,
+  onClonePromptChooseCopiesFolder,
+  onClonePromptUseSuggestedFolder,
+  onClonePromptClearCopiesFolder,
+  onClonePromptCancel,
+  onClonePromptConfirm,
+  workspaceFromUrl,
+  mobileRemoteWorkspacePathPrompt,
+  onMobileRemoteWorkspacePathPromptChange,
+  onMobileRemoteWorkspacePathPromptRecentPathSelect,
+  onMobileRemoteWorkspacePathPromptCancel,
+  onMobileRemoteWorkspacePathPromptConfirm,
+  branchSwitcher,
+  branches,
+  workspaces,
+  activeWorkspace,
+  currentBranch,
+  onBranchSwitcherSelect,
+  onBranchSwitcherCancel,
+  settingsOpen,
+  settingsSection,
+  onCloseSettings,
+  settingsViewComponent,
+  settingsViewProps,
+}: BuildAppModalsPropsArgs): AppModalsProps {
+  return {
+    renamePrompt,
+    onRenamePromptChange,
+    onRenamePromptCancel,
+    onRenamePromptConfirm,
+    initGitRepoPrompt,
+    initGitRepoPromptBusy,
+    onInitGitRepoPromptBranchChange,
+    onInitGitRepoPromptCreateRemoteChange,
+    onInitGitRepoPromptRepoNameChange,
+    onInitGitRepoPromptPrivateChange,
+    onInitGitRepoPromptCancel,
+    onInitGitRepoPromptConfirm,
+    worktreePrompt,
+    onWorktreePromptNameChange,
+    onWorktreePromptChange,
+    onWorktreePromptCopyAgentsMdChange,
+    onWorktreeSetupScriptChange,
+    onWorktreePromptCancel,
+    onWorktreePromptConfirm,
+    clonePrompt,
+    onClonePromptCopyNameChange,
+    onClonePromptChooseCopiesFolder,
+    onClonePromptUseSuggestedFolder,
+    onClonePromptClearCopiesFolder,
+    onClonePromptCancel,
+    onClonePromptConfirm,
+    ...workspaceFromUrl,
+    mobileRemoteWorkspacePathPrompt,
+    onMobileRemoteWorkspacePathPromptChange,
+    onMobileRemoteWorkspacePathPromptRecentPathSelect,
+    onMobileRemoteWorkspacePathPromptCancel,
+    onMobileRemoteWorkspacePathPromptConfirm,
+    branchSwitcher,
+    branches,
+    workspaces,
+    activeWorkspace,
+    currentBranch,
+    onBranchSwitcherSelect,
+    onBranchSwitcherCancel,
+    settingsOpen,
+    settingsSection: settingsSection ?? undefined,
+    onCloseSettings,
+    SettingsViewComponent: settingsViewComponent,
+    settingsProps: settingsViewProps,
+  };
+}
+
 export function useMainAppModals({
   settingsViewComponent,
   workspaces,
@@ -249,102 +454,70 @@ export function useMainAppModals({
   });
 
   const settingsViewProps = useMemo<Omit<SettingsViewProps, "initialSection" | "onClose">>(
-    () => ({
-      workspaceGroups,
-      groupedWorkspaces,
-      ungroupedLabel,
-      onMoveWorkspace: settings.handleMoveWorkspace,
-      onDeleteWorkspace: (workspaceId) => {
-        void settings.removeWorkspace(workspaceId);
-      },
-      onCreateWorkspaceGroup: settings.createWorkspaceGroup,
-      onRenameWorkspaceGroup: settings.renameWorkspaceGroup,
-      onMoveWorkspaceGroup: settings.moveWorkspaceGroup,
-      onDeleteWorkspaceGroup: settings.deleteWorkspaceGroup,
-      onAssignWorkspaceGroup: settings.assignWorkspaceGroup,
-      reduceTransparency: settings.reduceTransparency,
-      onToggleTransparency: settings.setReduceTransparency,
-      appSettings: settings.appSettings,
-      openAppIconById: settings.openAppIconById,
-      onUpdateAppSettings: async (next) => {
-        await Promise.resolve(settings.queueSaveSettings(next));
-      },
-      onToggleAutomaticAppUpdateChecks:
-        settings.handleToggleAutomaticAppUpdateChecks,
-      onRunDoctor: settings.doctor,
-      onRunCodexUpdate: settings.codexUpdate,
-      onUpdateWorkspaceSettings: async (id, nextSettings) => {
-        await settings.updateWorkspaceSettings(id, nextSettings);
-      },
-      scaleShortcutTitle: settings.scaleShortcutTitle,
-      scaleShortcutText: settings.scaleShortcutText,
-      onTestNotificationSound: settings.handleTestNotificationSound,
-      onTestSystemNotification: settings.handleTestSystemNotification,
-      onMobileConnectSuccess: settings.handleMobileConnectSuccess,
-      dictationModelStatus: settings.dictationModel.status,
-      onDownloadDictationModel: settings.dictationModel.download,
-      onCancelDictationDownload: settings.dictationModel.cancel,
-      onRemoveDictationModel: settings.dictationModel.remove,
-    }),
-    [
-      groupedWorkspaces,
-      settings,
-      ungroupedLabel,
-      workspaceGroups,
-    ],
+    () =>
+      buildSettingsViewProps({
+        groupedWorkspaces,
+        workspaceGroups,
+        ungroupedLabel,
+        settings,
+      }),
+    [groupedWorkspaces, settings, ungroupedLabel, workspaceGroups],
   );
 
   const appModalsProps = useMemo<AppModalsProps>(
-    () => ({
-      renamePrompt,
-      onRenamePromptChange: handleRenamePromptChange,
-      onRenamePromptCancel: handleRenamePromptCancel,
-      onRenamePromptConfirm: handleRenamePromptConfirm,
-      initGitRepoPrompt,
-      initGitRepoPromptBusy: git.initGitRepoLoading || git.createGitHubRepoLoading,
-      onInitGitRepoPromptBranchChange: handleInitGitRepoPromptBranchChange,
-      onInitGitRepoPromptCreateRemoteChange: handleInitGitRepoPromptCreateRemoteChange,
-      onInitGitRepoPromptRepoNameChange: handleInitGitRepoPromptRepoNameChange,
-      onInitGitRepoPromptPrivateChange: handleInitGitRepoPromptPrivateChange,
-      onInitGitRepoPromptCancel: handleInitGitRepoPromptCancel,
-      onInitGitRepoPromptConfirm: handleInitGitRepoPromptConfirm,
-      worktreePrompt,
-      onWorktreePromptNameChange: updateWorktreeName,
-      onWorktreePromptChange: updateWorktreeBranch,
-      onWorktreePromptCopyAgentsMdChange: updateWorktreeCopyAgentsMd,
-      onWorktreeSetupScriptChange: updateWorktreeSetupScript,
-      onWorktreePromptCancel: cancelWorktreePrompt,
-      onWorktreePromptConfirm: confirmWorktreePrompt,
-      clonePrompt,
-      onClonePromptCopyNameChange: updateCloneCopyName,
-      onClonePromptChooseCopiesFolder: chooseCloneCopiesFolder,
-      onClonePromptUseSuggestedFolder: useSuggestedCloneCopiesFolder,
-      onClonePromptClearCopiesFolder: clearCloneCopiesFolder,
-      onClonePromptCancel: cancelClonePrompt,
-      onClonePromptConfirm: confirmClonePrompt,
-      ...workspacePrompts.workspaceFromUrl,
-      mobileRemoteWorkspacePathPrompt: workspacePrompts.mobileRemoteWorkspacePathPrompt,
-      onMobileRemoteWorkspacePathPromptChange:
-        workspacePrompts.updateMobileRemoteWorkspacePathInput,
-      onMobileRemoteWorkspacePathPromptRecentPathSelect:
-        workspacePrompts.appendMobileRemoteWorkspacePathFromRecent,
-      onMobileRemoteWorkspacePathPromptCancel:
-        workspacePrompts.cancelMobileRemoteWorkspacePathPrompt,
-      onMobileRemoteWorkspacePathPromptConfirm:
-        workspacePrompts.submitMobileRemoteWorkspacePathPrompt,
-      branchSwitcher,
-      branches,
-      workspaces,
-      activeWorkspace,
-      currentBranch,
-      onBranchSwitcherSelect: handleBranchSelect,
-      onBranchSwitcherCancel: closeBranchSwitcher,
-      settingsOpen,
-      settingsSection: settingsSection ?? undefined,
-      onCloseSettings: closeSettings,
-      SettingsViewComponent: settingsViewComponent,
-      settingsProps: settingsViewProps,
-    }),
+    () =>
+      buildAppModalsProps({
+        renamePrompt,
+        onRenamePromptChange: handleRenamePromptChange,
+        onRenamePromptCancel: handleRenamePromptCancel,
+        onRenamePromptConfirm: handleRenamePromptConfirm,
+        initGitRepoPrompt,
+        initGitRepoPromptBusy: git.initGitRepoLoading || git.createGitHubRepoLoading,
+        onInitGitRepoPromptBranchChange: handleInitGitRepoPromptBranchChange,
+        onInitGitRepoPromptCreateRemoteChange:
+          handleInitGitRepoPromptCreateRemoteChange,
+        onInitGitRepoPromptRepoNameChange: handleInitGitRepoPromptRepoNameChange,
+        onInitGitRepoPromptPrivateChange: handleInitGitRepoPromptPrivateChange,
+        onInitGitRepoPromptCancel: handleInitGitRepoPromptCancel,
+        onInitGitRepoPromptConfirm: handleInitGitRepoPromptConfirm,
+        worktreePrompt,
+        onWorktreePromptNameChange: updateWorktreeName,
+        onWorktreePromptChange: updateWorktreeBranch,
+        onWorktreePromptCopyAgentsMdChange: updateWorktreeCopyAgentsMd,
+        onWorktreeSetupScriptChange: updateWorktreeSetupScript,
+        onWorktreePromptCancel: cancelWorktreePrompt,
+        onWorktreePromptConfirm: confirmWorktreePrompt,
+        clonePrompt,
+        onClonePromptCopyNameChange: updateCloneCopyName,
+        onClonePromptChooseCopiesFolder: chooseCloneCopiesFolder,
+        onClonePromptUseSuggestedFolder: useSuggestedCloneCopiesFolder,
+        onClonePromptClearCopiesFolder: clearCloneCopiesFolder,
+        onClonePromptCancel: cancelClonePrompt,
+        onClonePromptConfirm: confirmClonePrompt,
+        workspaceFromUrl: workspacePrompts.workspaceFromUrl,
+        mobileRemoteWorkspacePathPrompt:
+          workspacePrompts.mobileRemoteWorkspacePathPrompt,
+        onMobileRemoteWorkspacePathPromptChange:
+          workspacePrompts.updateMobileRemoteWorkspacePathInput,
+        onMobileRemoteWorkspacePathPromptRecentPathSelect:
+          workspacePrompts.appendMobileRemoteWorkspacePathFromRecent,
+        onMobileRemoteWorkspacePathPromptCancel:
+          workspacePrompts.cancelMobileRemoteWorkspacePathPrompt,
+        onMobileRemoteWorkspacePathPromptConfirm:
+          workspacePrompts.submitMobileRemoteWorkspacePathPrompt,
+        branchSwitcher,
+        branches,
+        workspaces,
+        activeWorkspace,
+        currentBranch,
+        onBranchSwitcherSelect: handleBranchSelect,
+        onBranchSwitcherCancel: closeBranchSwitcher,
+        settingsOpen,
+        settingsSection,
+        onCloseSettings: closeSettings,
+        settingsViewComponent,
+        settingsViewProps,
+      }),
     [
       activeWorkspace,
       branchSwitcher,

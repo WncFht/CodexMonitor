@@ -44,16 +44,18 @@ import { useMainAppDisplayNodes } from "@app/hooks/useMainAppDisplayNodes";
 import { useMainAppPromptActions } from "@app/hooks/useMainAppPromptActions";
 import { useMainAppShellProps } from "@app/hooks/useMainAppShellProps";
 import { useMainAppSidebarMenuOrchestration } from "@app/hooks/useMainAppSidebarMenuOrchestration";
+import { useMainAppSettingsActions } from "@app/hooks/useMainAppSettingsActions";
+import { useMainAppThreadCodexState } from "@app/hooks/useMainAppThreadCodexState";
 import { useMainAppWorktreeState } from "@app/hooks/useMainAppWorktreeState";
 import { useMainAppWorkspaceActions } from "@app/hooks/useMainAppWorkspaceActions";
 import { useMainAppWorkspaceLifecycle } from "@app/hooks/useMainAppWorkspaceLifecycle";
+import { useMainAppMobileThreadRefresh } from "@app/hooks/useMainAppMobileThreadRefresh";
 import { useHomeAccount } from "@app/hooks/useHomeAccount";
 import type {
   ComposerEditorSettings,
   ServiceTier,
   WorkspaceInfo,
 } from "@/types";
-import { OPEN_APP_STORAGE_KEY } from "@app/constants";
 import { useOpenAppIcons } from "@app/hooks/useOpenAppIcons";
 import { useAccountSwitching } from "@app/hooks/useAccountSwitching";
 import { useNewAgentDraft } from "@app/hooks/useNewAgentDraft";
@@ -76,14 +78,8 @@ import {
   useWorkspaceOrderingOrchestration,
 } from "@app/orchestration/useWorkspaceOrchestration";
 import { useAppShellOrchestration } from "@app/orchestration/useLayoutOrchestration";
-import { buildCodexArgsOptions } from "@threads/utils/codexArgsProfiles";
 import { normalizeCodexArgsInput } from "@/utils/codexArgsInput";
-import {
-  resolveWorkspaceRuntimeCodexArgsBadgeLabel,
-  resolveWorkspaceRuntimeCodexArgsOverride,
-} from "@threads/utils/threadCodexParamsSeed";
 import { subscribeTrayOpenThread } from "@services/events";
-import { setWorkspaceRuntimeCodexArgs } from "@services/tauri";
 
 const SettingsView = lazy(() =>
   import("@settings/components/SettingsView").then((module) => ({
@@ -133,7 +129,6 @@ export default function MainApp() {
   const [activeTab, setActiveTab] = useState<
     "home" | "projects" | "codex" | "git" | "log"
   >("codex");
-  const [mobileThreadRefreshLoading, setMobileThreadRefreshLoading] = useState(false);
   const tabletTab =
     activeTab === "projects" || activeTab === "home" ? "codex" : activeTab;
   const {
@@ -410,73 +405,17 @@ export default function MainApp() {
   const resolvedModel = selectedModel?.model ?? null;
   const resolvedEffort = reasoningSupported ? selectedEffort : null;
 
-  const handleThreadCodexMetadataDetected = useCallback(
-    (
-      workspaceId: string,
-      threadId: string,
-      metadata: { modelId: string | null; effort: string | null },
-    ) => {
-      if (!workspaceId || !threadId) {
-        return;
-      }
-      const modelId =
-        typeof metadata.modelId === "string" && metadata.modelId.trim().length > 0
-          ? metadata.modelId.trim()
-          : null;
-      const effort =
-        typeof metadata.effort === "string" && metadata.effort.trim().length > 0
-          ? metadata.effort.trim().toLowerCase()
-          : null;
-      if (!modelId && !effort) {
-        return;
-      }
-
-      const current = getThreadCodexParams(workspaceId, threadId);
-      const patch: {
-        modelId?: string | null;
-        effort?: string | null;
-      } = {};
-      if (modelId && !current?.modelId) {
-        patch.modelId = modelId;
-      }
-      if (effort && !current?.effort) {
-        patch.effort = effort;
-      }
-      if (Object.keys(patch).length === 0) {
-        return;
-      }
-      patchThreadCodexParams(workspaceId, threadId, patch);
-    },
-    [getThreadCodexParams, patchThreadCodexParams],
-  );
-  const codexArgsOptions = useMemo(
-    () =>
-      buildCodexArgsOptions({
-        appCodexArgs: appSettings.codexArgs ?? null,
-        additionalCodexArgs: [selectedCodexArgsOverride],
-      }),
-    [appSettings.codexArgs, selectedCodexArgsOverride],
-  );
-  const ensureWorkspaceRuntimeCodexArgs = useCallback(
-    async (workspaceId: string, threadId: string | null) => {
-      const sanitizedCodexArgsOverride = resolveWorkspaceRuntimeCodexArgsOverride({
-        workspaceId,
-        threadId,
-        getThreadCodexParams,
-      });
-      await setWorkspaceRuntimeCodexArgs(workspaceId, sanitizedCodexArgsOverride);
-    },
-    [getThreadCodexParams],
-  );
-  const getThreadArgsBadge = useCallback(
-    (workspaceId: string, threadId: string) =>
-      resolveWorkspaceRuntimeCodexArgsBadgeLabel({
-        workspaceId,
-        threadId,
-        getThreadCodexParams,
-      }),
-    [getThreadCodexParams],
-  );
+  const {
+    handleThreadCodexMetadataDetected,
+    codexArgsOptions,
+    ensureWorkspaceRuntimeCodexArgs,
+    getThreadArgsBadge,
+  } = useMainAppThreadCodexState({
+    appCodexArgs: appSettings.codexArgs,
+    selectedCodexArgsOverride,
+    getThreadCodexParams,
+    patchThreadCodexParams,
+  });
 
   const { collaborationModePayload } = useCollaborationModeSelection({
     selectedCollaborationMode,
@@ -590,38 +529,14 @@ export default function MainApp() {
       reconnectWorkspace: connectWorkspace,
     });
 
-  const handleMobileThreadRefresh = useCallback(() => {
-    if (mobileThreadRefreshLoading || !activeWorkspace) {
-      return;
-    }
-    setMobileThreadRefreshLoading(true);
-    void (async () => {
-      let threadId = activeThreadId;
-      if (!threadId) {
-        threadId = await startThreadForWorkspace(activeWorkspace.id, {
-          activate: true,
-        });
-      }
-      if (!threadId) {
-        return;
-      }
-      await refreshThread(activeWorkspace.id, threadId);
-      await reconnectLive(activeWorkspace.id, threadId, { runResume: false });
-    })()
-      .catch(() => {
-        // Errors are surfaced through debug entries/toasts in existing thread actions.
-      })
-      .finally(() => {
-        setMobileThreadRefreshLoading(false);
-      });
-  }, [
-    activeThreadId,
-    activeWorkspace,
-    mobileThreadRefreshLoading,
-    refreshThread,
-    reconnectLive,
-    startThreadForWorkspace,
-  ]);
+  const { mobileThreadRefreshLoading, handleMobileThreadRefresh } =
+    useMainAppMobileThreadRefresh({
+      activeWorkspace,
+      activeThreadId,
+      startThreadForWorkspace,
+      refreshThread,
+      reconnectLive,
+    });
   const {
     updaterState,
     startUpdate,
@@ -995,52 +910,17 @@ export default function MainApp() {
     updateWorkspaceSettings,
   });
 
-  const handleSelectOpenAppId = useCallback(
-    (id: string) => {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(OPEN_APP_STORAGE_KEY, id);
-      }
-      setAppSettings((current) => {
-        if (current.selectedOpenAppId === id) {
-          return current;
-        }
-        const nextSettings = {
-          ...current,
-          selectedOpenAppId: id,
-        };
-        void queueSaveSettings(nextSettings);
-        return nextSettings;
-      });
-    },
-    [queueSaveSettings, setAppSettings],
-  );
-
-  const handleToggleAutomaticAppUpdateChecks = useCallback(() => {
-    setAppSettings((current) => {
-      const nextSettings = {
-        ...current,
-        automaticAppUpdateChecksEnabled:
-          !current.automaticAppUpdateChecksEnabled,
-      };
-      void queueSaveSettings(nextSettings);
-      return nextSettings;
-    });
-  }, [queueSaveSettings, setAppSettings]);
+  const {
+    handleSelectOpenAppId,
+    handleToggleAutomaticAppUpdateChecks,
+    persistProjectCopiesFolder,
+  } = useMainAppSettingsActions({
+    appSettings,
+    setAppSettings,
+    queueSaveSettings,
+  });
 
   const openAppIconById = useOpenAppIcons(appSettings.openAppTargets);
-
-  const persistProjectCopiesFolder = useCallback(
-    async (groupId: string, copiesFolder: string) => {
-      await queueSaveSettings({
-        ...appSettings,
-        workspaceGroups: appSettings.workspaceGroups.map((entry) =>
-          entry.id === groupId ? { ...entry, copiesFolder } : entry,
-        ),
-      });
-    },
-    [appSettings, queueSaveSettings],
-  );
-
 
   const {
     workspaceFromUrlPrompt,

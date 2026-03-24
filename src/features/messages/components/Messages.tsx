@@ -1,12 +1,4 @@
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { memo, useCallback } from "react";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import type {
@@ -15,18 +7,10 @@ import type {
   RequestUserInputRequest,
   RequestUserInputResponse,
 } from "../../../types";
-import { isPlanReadyTaggedMessage } from "../../../utils/internalPlanReadyMessages";
 import { PlanReadyFollowupMessage } from "../../app/components/PlanReadyFollowupMessage";
 import { RequestUserInputMessage } from "../../app/components/RequestUserInputMessage";
 import { useFileLinkOpener } from "../hooks/useFileLinkOpener";
-import {
-  SCROLL_THRESHOLD_PX,
-  buildToolGroups,
-  computePlanFollowupState,
-  formatCount,
-  parseReasoning,
-  scrollKeyForItems,
-} from "../utils/messageRenderUtils";
+import { formatCount, parseReasoning } from "../utils/messageRenderUtils";
 import {
   DiffRow,
   ExploreRow,
@@ -37,6 +21,7 @@ import {
   UserInputRow,
   WorkingIndicator,
 } from "./MessageRows";
+import { useMessagesViewState } from "./useMessagesViewState";
 
 type MessagesProps = {
   items: ConversationItem[];
@@ -64,18 +49,6 @@ type MessagesProps = {
   onQuoteMessage?: (text: string) => void;
 };
 
-function toMarkdownQuote(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed) {
-    return "";
-  }
-  return trimmed
-    .split(/\r?\n/)
-    .map((line) => `> ${line}`)
-    .join("\n")
-    .concat("\n\n");
-}
-
 export const Messages = memo(function Messages({
   items,
   threadId,
@@ -98,16 +71,6 @@ export const Messages = memo(function Messages({
   onOpenThreadLink,
   onQuoteMessage,
 }: MessagesProps) {
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const autoScrollRef = useRef(true);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const manuallyToggledExpandedRef = useRef<Set<string>>(new Set());
-  const [collapsedToolGroups, setCollapsedToolGroups] = useState<Set<string>>(
-    new Set(),
-  );
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const copyTimeoutRef = useRef<number | null>(null);
   const activeUserInputRequestId =
     threadId && userInputRequests.length
       ? (userInputRequests.find(
@@ -116,7 +79,6 @@ export const Messages = memo(function Messages({
             (!workspaceId || request.workspace_id === workspaceId),
         )?.request_id ?? null)
       : null;
-  const scrollKey = `${scrollKeyForItems(items)}-${activeUserInputRequestId ?? "no-input"}`;
   const { openFileLink, showFileLinkMenu } = useFileLinkOpener(
     workspacePath,
     openTargets,
@@ -129,189 +91,6 @@ export const Messages = memo(function Messages({
     [onOpenThreadLink, workspaceId],
   );
 
-  const isNearBottom = useCallback(
-    (node: HTMLDivElement) =>
-      node.scrollHeight - node.scrollTop - node.clientHeight <= SCROLL_THRESHOLD_PX,
-    [],
-  );
-
-  const updateAutoScroll = () => {
-    if (!containerRef.current) {
-      return;
-    }
-    autoScrollRef.current = isNearBottom(containerRef.current);
-  };
-
-  const requestAutoScroll = useCallback(() => {
-    const container = containerRef.current;
-    const shouldScroll =
-      autoScrollRef.current || (container ? isNearBottom(container) : true);
-    if (!shouldScroll) {
-      return;
-    }
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-      return;
-    }
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [isNearBottom]);
-
-  useLayoutEffect(() => {
-    autoScrollRef.current = true;
-  }, [threadId]);
-
-  const toggleExpanded = useCallback((id: string) => {
-    manuallyToggledExpandedRef.current.add(id);
-    setExpandedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleToolGroup = useCallback((id: string) => {
-    setCollapsedToolGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const reasoningMetaById = useMemo(() => {
-    const meta = new Map<string, ReturnType<typeof parseReasoning>>();
-    items.forEach((item) => {
-      if (item.kind === "reasoning") {
-        meta.set(item.id, parseReasoning(item));
-      }
-    });
-    return meta;
-  }, [items]);
-
-  const latestReasoningLabel = useMemo(() => {
-    for (let index = items.length - 1; index >= 0; index -= 1) {
-      const item = items[index];
-      if (item.kind === "message") {
-        break;
-      }
-      if (item.kind !== "reasoning") {
-        continue;
-      }
-      const parsed = reasoningMetaById.get(item.id);
-      if (parsed?.workingLabel) {
-        return parsed.workingLabel;
-      }
-    }
-    return null;
-  }, [items, reasoningMetaById]);
-
-  const visibleItems = useMemo(
-    () =>
-      items.filter((item) => {
-        if (
-          item.kind === "message" &&
-          item.role === "user" &&
-          isPlanReadyTaggedMessage(item.text)
-        ) {
-          return false;
-        }
-        if (item.kind !== "reasoning") {
-          return true;
-        }
-        return reasoningMetaById.get(item.id)?.hasBody ?? false;
-      }),
-    [items, reasoningMetaById],
-  );
-
-  useEffect(() => {
-    for (let index = visibleItems.length - 1; index >= 0; index -= 1) {
-      const item = visibleItems[index];
-      if (
-        item.kind === "tool" &&
-        item.toolType === "plan" &&
-        (item.output ?? "").trim().length > 0
-      ) {
-        if (manuallyToggledExpandedRef.current.has(item.id)) {
-          return;
-        }
-        setExpandedItems((prev) => {
-          if (prev.has(item.id)) {
-            return prev;
-          }
-          const next = new Set(prev);
-          next.add(item.id);
-          return next;
-        });
-        return;
-      }
-    }
-  }, [visibleItems]);
-
-  useEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current) {
-        window.clearTimeout(copyTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleCopyMessage = useCallback(
-    async (item: Extract<ConversationItem, { kind: "message" }>) => {
-      try {
-        await navigator.clipboard.writeText(item.text);
-        setCopiedMessageId(item.id);
-        if (copyTimeoutRef.current) {
-          window.clearTimeout(copyTimeoutRef.current);
-        }
-        copyTimeoutRef.current = window.setTimeout(() => {
-          setCopiedMessageId(null);
-        }, 1200);
-      } catch {
-        // No-op: clipboard errors can occur in restricted contexts.
-      }
-    },
-    [],
-  );
-
-  const handleQuoteMessage = useCallback(
-    (item: Extract<ConversationItem, { kind: "message" }>, selectedText?: string) => {
-      if (!onQuoteMessage) {
-        return;
-      }
-      const sourceText = selectedText?.trim().length ? selectedText : item.text;
-      const quoteText = toMarkdownQuote(sourceText);
-      if (!quoteText) {
-        return;
-      }
-      onQuoteMessage(quoteText);
-    },
-    [onQuoteMessage],
-  );
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    const shouldScroll =
-      autoScrollRef.current ||
-      (container ? isNearBottom(container) : true);
-    if (!shouldScroll) {
-      return;
-    }
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-      return;
-    }
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [scrollKey, isThinking, isNearBottom, threadId]);
-
-  const groupedItems = useMemo(() => buildToolGroups(visibleItems), [visibleItems]);
-
   const hasActiveUserInputRequest = activeUserInputRequestId !== null;
   const hasVisibleUserInputRequest = hasActiveUserInputRequest && Boolean(onUserInputSubmit);
   const userInputNode =
@@ -323,58 +102,43 @@ export const Messages = memo(function Messages({
         onSubmit={onUserInputSubmit}
       />
     ) : null;
-
-  const [dismissedPlanFollowupByThread, setDismissedPlanFollowupByThread] =
-    useState<Record<string, string>>({});
-
-  const planFollowup = useMemo(() => {
-    if (!onPlanAccept || !onPlanSubmitChanges) {
-      return { shouldShow: false, planItemId: null };
-    }
-
-    const candidate = computePlanFollowupState({
-      threadId,
-      items,
-      isThinking,
-      hasVisibleUserInputRequest,
-    });
-
-    if (threadId && candidate.planItemId) {
-      if (dismissedPlanFollowupByThread[threadId] === candidate.planItemId) {
-        return { ...candidate, shouldShow: false };
-      }
-    }
-
-    return candidate;
-  }, [
-    dismissedPlanFollowupByThread,
-    hasVisibleUserInputRequest,
-    isThinking,
+  const {
+    bottomRef,
+    containerRef,
+    updateAutoScroll,
+    requestAutoScroll,
+    expandedItems,
+    toggleExpanded,
+    collapsedToolGroups,
+    toggleToolGroup,
+    copiedMessageId,
+    handleCopyMessage,
+    handleQuoteMessage,
+    reasoningMetaById,
+    latestReasoningLabel,
+    groupedItems,
+    planFollowup,
+    dismissPlanFollowup,
+  } = useMessagesViewState({
     items,
+    threadId,
+    isThinking,
+    activeUserInputRequestId,
+    hasVisibleUserInputRequest,
     onPlanAccept,
     onPlanSubmitChanges,
-    threadId,
-  ]);
+    onQuoteMessage,
+  });
 
   const planFollowupNode =
     planFollowup.shouldShow && onPlanAccept && onPlanSubmitChanges ? (
       <PlanReadyFollowupMessage
         onAccept={() => {
-          if (threadId && planFollowup.planItemId) {
-            setDismissedPlanFollowupByThread((prev) => ({
-              ...prev,
-              [threadId]: planFollowup.planItemId!,
-            }));
-          }
+          dismissPlanFollowup();
           onPlanAccept();
         }}
         onSubmitChanges={(changes) => {
-          if (threadId && planFollowup.planItemId) {
-            setDismissedPlanFollowupByThread((prev) => ({
-              ...prev,
-              [threadId]: planFollowup.planItemId!,
-            }));
-          }
+          dismissPlanFollowup();
           onPlanSubmitChanges(changes);
         }}
       />

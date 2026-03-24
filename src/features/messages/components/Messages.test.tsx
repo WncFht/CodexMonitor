@@ -145,6 +145,35 @@ describe("Messages", () => {
     expect(markdown?.textContent ?? "").toContain("Literal [image] token");
   });
 
+  it("uses the table container as the visual bubble for assistant table-only messages", () => {
+    const items: ConversationItem[] = [
+      {
+        id: "msg-table-1",
+        kind: "message",
+        role: "assistant",
+        text: [
+          "src/features/app/hooks/useMainAppLayoutSurfaces.ts | category=clarity | Layout assembly is still too broad. | Split surface assembly by domain. | high",
+          "",
+          "src/features/threads/hooks/threadMessagingHelpers.ts | category=clarity | Helper responsibilities are too broad. | Split helpers by concern. | medium",
+        ].join("\n"),
+      },
+    ];
+
+    const { container } = render(
+      <Messages
+        items={items}
+        threadId="thread-1"
+        workspaceId="ws-1"
+        isThinking={false}
+        openTargets={[]}
+        selectedOpenAppId=""
+      />,
+    );
+
+    expect(container.querySelector(".message-bubble-table-only")).toBeTruthy();
+    expect(container.querySelector(".markdown-table-wrap")).toBeTruthy();
+  });
+
   it("quotes a message into composer using markdown blockquote format", () => {
     const onQuoteMessage = vi.fn();
     const items: ConversationItem[] = [

@@ -2,10 +2,8 @@ import {
   memo,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ClipboardEvent,
 } from "react";
 import type {
@@ -24,8 +22,6 @@ import type {
   ReviewPromptState,
   ReviewPromptStep,
 } from "../../threads/hooks/useReviewPrompt";
-import { computeDictationInsertion } from "../../../utils/dictation";
-import { isComposingEvent } from "../../../utils/keys";
 import {
   connectorMentionSlug,
   resolveBoundAppMentions,
@@ -34,18 +30,19 @@ import {
 import {
   getFenceTriggerLine,
   getLineIndent,
-  getListContinuation,
   isCodeLikeSingleLine,
   isCursorInsideFence,
   normalizePastedText,
 } from "../../../utils/composerText";
-import { getCaretPosition } from "../../../utils/caretPosition";
 import { useComposerAutocompleteState } from "../hooks/useComposerAutocompleteState";
+import { useComposerDraftEffects } from "../hooks/useComposerDraftEffects";
+import { useComposerKeyDown } from "../hooks/useComposerKeyDown";
+import { useComposerSuggestionStyle } from "../hooks/useComposerSuggestionStyle";
 import { usePromptHistory } from "../hooks/usePromptHistory";
 import { ComposerInput } from "./ComposerInput";
 import { ComposerMetaBar } from "./ComposerMetaBar";
 import { ComposerQueue } from "./ComposerQueue";
-import { isMacPlatform, isMobilePlatform } from "../../../utils/platformPaths";
+import { isMacPlatform } from "../../../utils/platformPaths";
 import type { CodexArgsOption } from "../../threads/utils/codexArgsProfiles";
 
 type ComposerProps = {
@@ -161,7 +158,6 @@ const DEFAULT_EDITOR_SETTINGS: ComposerEditorSettings = {
   autoWrapPasteCodeLike: false,
   continueListOnShiftEnter: false,
 };
-const CARET_ANCHOR_GAP = 8;
 
 export const Composer = memo(function Composer({
   onSend,
@@ -251,9 +247,6 @@ export const Composer = memo(function Composer({
   const [text, setText] = useState(draftText);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [appMentionBindings, setAppMentionBindings] = useState<AppMentionBinding[]>([]);
-  const [suggestionsStyle, setSuggestionsStyle] = useState<
-    CSSProperties | undefined
-  >(undefined);
   const internalRef = useRef<HTMLTextAreaElement | null>(null);
   const textareaRef = externalTextareaRef ?? internalRef;
   const editorSettings = editorSettingsProp ?? DEFAULT_EDITOR_SETTINGS;
@@ -288,10 +281,6 @@ export const Composer = memo(function Composer({
     continueListOnShiftEnter,
   } = editorSettings;
 
-  useEffect(() => {
-    setText((prev) => (prev === draftText ? prev : draftText));
-  }, [draftText]);
-
   const setComposerText = useCallback(
     (next: string) => {
       setText(next);
@@ -299,6 +288,9 @@ export const Composer = memo(function Composer({
     },
     [onDraftChange],
   );
+  const syncDraftText = useCallback((next: string) => {
+    setText((prev) => (prev === next ? prev : next));
+  }, []);
 
   const bindingsFromMentions = useCallback(
     (mentions?: AppMention[]) =>
@@ -365,37 +357,13 @@ export const Composer = memo(function Composer({
   const reviewPromptOpen = Boolean(reviewPrompt);
   const suggestionsOpen = reviewPromptOpen || isAutocompleteOpen;
   const suggestions = reviewPromptOpen ? [] : autocompleteMatches;
-
-  useLayoutEffect(() => {
-    if (!isAutocompleteOpen) {
-      setSuggestionsStyle(undefined);
-      return;
-    }
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    const cursor = autocompleteAnchorIndex ?? textarea.selectionStart ?? selectionStart ?? text.length;
-    const caret = getCaretPosition(textarea, cursor);
-    if (!caret) {
-      return;
-    }
-    const textareaRect = textarea.getBoundingClientRect();
-    const container = textarea.closest(".composer-input");
-    const containerRect = container?.getBoundingClientRect();
-    const offsetLeft = textareaRect.left - (containerRect?.left ?? 0);
-    const containerWidth = container?.clientWidth ?? textarea.clientWidth ?? 0;
-    const popoverWidth = Math.min(containerWidth, 420);
-    const rawLeft = offsetLeft + caret.left;
-    const maxLeft = Math.max(0, containerWidth - popoverWidth);
-    const left = Math.min(Math.max(0, rawLeft), maxLeft);
-    setSuggestionsStyle({
-      left,
-      right: "auto",
-      bottom: `calc(100% + ${CARET_ANCHOR_GAP}px)`,
-      top: "auto",
-    });
-  }, [autocompleteAnchorIndex, isAutocompleteOpen, selectionStart, text, textareaRef]);
+  const suggestionsStyle = useComposerSuggestionStyle({
+    isAutocompleteOpen,
+    autocompleteAnchorIndex,
+    selectionStart,
+    text,
+    textareaRef,
+  });
 
   const {
     handleHistoryKeyDown,
@@ -452,81 +420,25 @@ export const Composer = memo(function Composer({
     text,
   ]);
 
-  useEffect(() => {
-    setAppMentionBindings([]);
-  }, [historyKey]);
-
-  useEffect(() => {
-    if (!prefillDraft) {
-      return;
-    }
-    setComposerText(prefillDraft.text);
-    setAppMentionBindings(bindingsFromMentions(prefillDraft.appMentions));
-    resetHistoryNavigation();
-    onPrefillHandled?.(prefillDraft.id);
-  }, [
-    bindingsFromMentions,
-    onPrefillHandled,
+  useComposerDraftEffects({
+    draftText,
+    historyKey,
     prefillDraft,
-    resetHistoryNavigation,
-    setComposerText,
-  ]);
-
-  useEffect(() => {
-    if (!insertText) {
-      return;
-    }
-    setComposerText(insertText.text);
-    setAppMentionBindings(bindingsFromMentions(insertText.appMentions));
-    resetHistoryNavigation();
-    onInsertHandled?.(insertText.id);
-  }, [
-    bindingsFromMentions,
+    onPrefillHandled,
     insertText,
     onInsertHandled,
-    resetHistoryNavigation,
-    setComposerText,
-  ]);
-
-  useEffect(() => {
-    if (!dictationTranscript) {
-      return;
-    }
-    const textToInsert = dictationTranscript.text.trim();
-    if (!textToInsert) {
-      onDictationTranscriptHandled?.(dictationTranscript.id);
-      return;
-    }
-    const textarea = textareaRef.current;
-    const start = textarea?.selectionStart ?? selectionStart ?? text.length;
-    const end = textarea?.selectionEnd ?? start;
-    const { nextText, nextCursor } = computeDictationInsertion(
-      text,
-      textToInsert,
-      start,
-      end,
-    );
-    setComposerText(nextText);
-    resetHistoryNavigation();
-    requestAnimationFrame(() => {
-      if (!textareaRef.current) {
-        return;
-      }
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(nextCursor, nextCursor);
-      handleSelectionChange(nextCursor);
-    });
-    onDictationTranscriptHandled?.(dictationTranscript.id);
-  }, [
     dictationTranscript,
-    handleSelectionChange,
     onDictationTranscriptHandled,
-    resetHistoryNavigation,
-    selectionStart,
-    setComposerText,
-    text,
     textareaRef,
-  ]);
+    selectionStart,
+    syncDraftText,
+    text,
+    setComposerText,
+    setAppMentionBindings,
+    bindingsFromMentions,
+    resetHistoryNavigation,
+    handleSelectionChange,
+  });
 
   const applyTextInsertion = useCallback(
     (nextText: string, nextCursor: number) => {
@@ -640,6 +552,26 @@ export const Composer = memo(function Composer({
     },
     [applyTextInsertion, fenceLanguageTags, fenceWrapSelection, text],
   );
+  const handleKeyDown = useComposerKeyDown({
+    applyTextInsertion,
+    canSend,
+    continueListOnShiftEnter,
+    defaultSubmitIntent,
+    expandFenceOnEnter,
+    expandFenceOnSpace,
+    handleHistoryKeyDown,
+    handleInputKeyDown,
+    handleSend,
+    isDictationBusy,
+    isMac,
+    onReviewPromptKeyDown,
+    oppositeSubmitIntent,
+    reviewPromptOpen,
+    suggestionsOpen,
+    text,
+    textareaRef,
+    tryExpandFence,
+  });
 
 
   return (
@@ -715,122 +647,7 @@ export const Composer = memo(function Composer({
         onTextPaste={handleTextPaste}
         isExpanded={editorExpanded}
         onToggleExpand={onToggleEditorExpanded}
-        onKeyDown={(event) => {
-          if (isComposingEvent(event)) {
-            return;
-          }
-          handleHistoryKeyDown(event);
-          if (event.defaultPrevented) {
-            return;
-          }
-          const isOppositeFollowUpShortcut =
-            event.key === "Enter" &&
-            event.shiftKey &&
-            (isMac ? event.metaKey : event.ctrlKey);
-          if (isOppositeFollowUpShortcut && !suggestionsOpen) {
-            if (isDictationBusy) {
-              event.preventDefault();
-              return;
-            }
-            event.preventDefault();
-            const dismissKeyboardAfterSend = canSend && isMobilePlatform();
-            handleSend(oppositeSubmitIntent);
-            if (dismissKeyboardAfterSend) {
-              textareaRef.current?.blur();
-            }
-            return;
-          }
-          if (
-            expandFenceOnSpace &&
-            event.key === " " &&
-            !event.shiftKey &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            !event.altKey
-          ) {
-            const textarea = textareaRef.current;
-            if (!textarea) {
-              return;
-            }
-            const start = textarea.selectionStart ?? text.length;
-            const end = textarea.selectionEnd ?? start;
-            if (tryExpandFence(start, end)) {
-              event.preventDefault();
-              return;
-            }
-          }
-          if (
-            event.key === "Enter" &&
-            event.shiftKey &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            !event.altKey
-          ) {
-            if (continueListOnShiftEnter && !suggestionsOpen) {
-              const textarea = textareaRef.current;
-              if (textarea) {
-                const start = textarea.selectionStart ?? text.length;
-                const end = textarea.selectionEnd ?? start;
-                if (start === end) {
-                  const marker = getListContinuation(text, start);
-                  if (marker) {
-                    event.preventDefault();
-                    const before = text.slice(0, start);
-                    const after = text.slice(end);
-                    const nextText = `${before}\n${marker}${after}`;
-                    const nextCursor = before.length + 1 + marker.length;
-                    applyTextInsertion(nextText, nextCursor);
-                    return;
-                  }
-                }
-              }
-            }
-            event.preventDefault();
-            const textarea = textareaRef.current;
-            if (!textarea) {
-              return;
-            }
-            const start = textarea.selectionStart ?? text.length;
-            const end = textarea.selectionEnd ?? start;
-            const nextText = `${text.slice(0, start)}\n${text.slice(end)}`;
-            const nextCursor = start + 1;
-            applyTextInsertion(nextText, nextCursor);
-            return;
-          }
-          if (reviewPromptOpen && onReviewPromptKeyDown) {
-            const handled = onReviewPromptKeyDown(event);
-            if (handled) {
-              return;
-            }
-          }
-          handleInputKeyDown(event);
-          if (event.defaultPrevented) {
-            return;
-          }
-          if (event.key === "Enter" && !event.shiftKey) {
-            if (expandFenceOnEnter) {
-              const textarea = textareaRef.current;
-              if (textarea) {
-                const start = textarea.selectionStart ?? text.length;
-                const end = textarea.selectionEnd ?? start;
-                if (tryExpandFence(start, end)) {
-                  event.preventDefault();
-                  return;
-                }
-              }
-            }
-            if (isDictationBusy) {
-              event.preventDefault();
-              return;
-            }
-            event.preventDefault();
-            const dismissKeyboardAfterSend = canSend && isMobilePlatform();
-            handleSend(defaultSubmitIntent);
-            if (dismissKeyboardAfterSend) {
-              textareaRef.current?.blur();
-            }
-          }
-        }}
+        onKeyDown={handleKeyDown}
         textareaRef={textareaRef}
         suggestionsOpen={suggestionsOpen}
         suggestions={suggestions}

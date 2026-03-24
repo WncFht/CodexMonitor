@@ -35,6 +35,7 @@ import {
   type ToolSummary,
 } from "../utils/messageRenderUtils";
 import { Markdown } from "./Markdown";
+import { isStandaloneMarkdownTable } from "./Markdown";
 
 type MarkdownFileLinkProps = {
   showMessageFilePath?: boolean;
@@ -395,6 +396,11 @@ export const MessageRow = memo(function MessageRow({
       })
       .filter(Boolean) as MessageImage[];
   }, [item.images]);
+  const isTableOnlyAssistantMessage =
+    item.role === "assistant" &&
+    hasText &&
+    imageItems.length === 0 &&
+    isStandaloneMarkdownTable(item.text);
 
   const getSelectedMessageText = useCallback(() => {
     const bubble = bubbleRef.current;
@@ -436,7 +442,10 @@ export const MessageRow = memo(function MessageRow({
 
   return (
     <div className={`message ${item.role}`}>
-      <div ref={bubbleRef} className="bubble message-bubble">
+      <div
+        ref={bubbleRef}
+        className={`bubble message-bubble${isTableOnlyAssistantMessage ? " message-bubble-table-only" : ""}`}
+      >
         {imageItems.length > 0 && (
           <MessageImageGrid
             images={imageItems}

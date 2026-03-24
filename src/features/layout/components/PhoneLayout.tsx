@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { MainTopbar } from "../../app/components/MainTopbar";
+import { ChatPane } from "./ChatPane";
 
 type PhoneLayoutProps = {
   approvalToastsNode: ReactNode;
@@ -60,8 +61,9 @@ export function PhoneLayout({
                 actionsNode={topbarActionsNode}
                 className="compact-topbar"
               />
-              <div className="content compact-content">{messagesNode}</div>
-              {composerNode}
+              <div className="content compact-content">
+                <ChatPane messagesNode={messagesNode} composerNode={composerNode} />
+              </div>
             </>
           ) : (
             compactEmptyCodexNode

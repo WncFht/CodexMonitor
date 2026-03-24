@@ -53,6 +53,139 @@ type UseMainAppGitStateOptions = {
   ) => Promise<void | SendMessageResult>;
 };
 
+type GitStatusSummary = {
+  error: unknown;
+  files: Array<unknown>;
+};
+
+function buildGitStatusText(gitStatus: GitStatusSummary) {
+  if (gitStatus.error) {
+    return "Git status unavailable";
+  }
+  return gitStatus.files.length > 0
+    ? `${gitStatus.files.length} file${gitStatus.files.length === 1 ? "" : "s"} changed`
+    : "Working tree clean";
+}
+
+function resolveShouldLoadGitHubPanelData({
+  gitPanelMode,
+  shouldLoadDiffs,
+  diffSource,
+}: {
+  gitPanelMode: "diff" | "issues" | "log" | "perFile" | "prs";
+  shouldLoadDiffs: boolean;
+  diffSource: "commit" | "local" | "perFile" | "pr";
+}) {
+  return (
+    gitPanelMode === "issues" ||
+    gitPanelMode === "prs" ||
+    (shouldLoadDiffs && diffSource === "pr")
+  );
+}
+
+function useMainAppGitBranchActions({
+  activeWorkspace,
+  addDebugEntry,
+  refreshGitStatus,
+  refreshGitLog,
+  currentBranch,
+}: {
+  activeWorkspace: WorkspaceInfo | null;
+  addDebugEntry: (entry: DebugEntry) => void;
+  refreshGitStatus: () => void;
+  refreshGitLog: () => void;
+  currentBranch: string | null;
+}) {
+  const { branches, checkoutBranch, checkoutPullRequest, createBranch } = useGitBranches({
+    activeWorkspace,
+    onDebug: addDebugEntry,
+  });
+
+  const alertError = useCallback((error: unknown) => {
+    alert(error instanceof Error ? error.message : String(error));
+  }, []);
+
+  const handleCheckoutBranch = useCallback(
+    async (name: string) => {
+      await checkoutBranch(name);
+      refreshGitStatus();
+    },
+    [checkoutBranch, refreshGitStatus],
+  );
+
+  const handleCheckoutPullRequest = useCallback(
+    async (prNumber: number) => {
+      try {
+        await checkoutPullRequest(prNumber);
+        await Promise.resolve(refreshGitStatus());
+        await Promise.resolve(refreshGitLog());
+      } catch (error) {
+        alertError(error);
+      }
+    },
+    [alertError, checkoutPullRequest, refreshGitLog, refreshGitStatus],
+  );
+
+  const handleCreateBranch = useCallback(
+    async (name: string) => {
+      await createBranch(name);
+      refreshGitStatus();
+    },
+    [createBranch, refreshGitStatus],
+  );
+
+  return {
+    branches,
+    currentBranch,
+    isBranchSwitcherEnabled: Boolean(activeWorkspace?.connected) && activeWorkspace?.kind !== "worktree",
+    handleCheckoutBranch,
+    handleCheckoutPullRequest,
+    handleCreateBranch,
+  };
+}
+
+function useMainAppPullRequestReviewState({
+  activeWorkspace,
+  activeThreadId,
+  reviewDeliveryMode,
+  pullRequest,
+  pullRequestDiffs,
+  pullRequestComments,
+  connectWorkspace,
+  startThreadForWorkspace,
+  sendUserMessageToThread,
+}: {
+  activeWorkspace: WorkspaceInfo | null;
+  activeThreadId: string | null;
+  reviewDeliveryMode: "inline" | "detached";
+  pullRequest: Parameters<typeof usePullRequestReviewActions>[0]["pullRequest"];
+  pullRequestDiffs: Parameters<typeof usePullRequestReviewActions>[0]["pullRequestDiffs"];
+  pullRequestComments: Parameters<typeof usePullRequestReviewActions>[0]["pullRequestComments"];
+  connectWorkspace: (workspace: WorkspaceInfo) => Promise<void>;
+  startThreadForWorkspace: (
+    workspaceId: string,
+    options?: { activate?: boolean },
+  ) => Promise<string | null>;
+  sendUserMessageToThread: (
+    workspace: WorkspaceInfo,
+    threadId: string,
+    text: string,
+    images?: string[],
+  ) => Promise<void | SendMessageResult>;
+}) {
+  return usePullRequestReviewActions({
+    activeWorkspace,
+    activeThreadId,
+    reviewDeliveryMode,
+    pullRequest,
+    pullRequestDiffs,
+    pullRequestComments,
+    connectWorkspace,
+    startThreadForWorkspace,
+    sendUserMessageToThread,
+  });
+}
+
 export function useMainAppGitState({
   activeWorkspace,
   activeWorkspaceId,
@@ -71,6 +204,10 @@ export function useMainAppGitState({
   startThreadForWorkspace,
   sendUserMessageToThread,
 }: UseMainAppGitStateOptions) {
+  const alertError = useCallback((error: unknown) => {
+    alert(error instanceof Error ? error.message : String(error));
+  }, []);
+
   const {
     gitIssues,
     gitIssuesTotal,
@@ -170,52 +307,26 @@ export function useMainAppGitState({
     prDiffsError: gitPullRequestDiffsError,
   });
 
-  const shouldLoadGitHubPanelData =
-    gitPanelMode === "issues" ||
-    gitPanelMode === "prs" ||
-    (shouldLoadDiffs && diffSource === "pr");
-
-  const alertError = useCallback((error: unknown) => {
-    alert(error instanceof Error ? error.message : String(error));
-  }, []);
-
-  const { branches, checkoutBranch, checkoutPullRequest, createBranch } = useGitBranches({
-    activeWorkspace,
-    onDebug: addDebugEntry,
+  const shouldLoadGitHubPanelData = resolveShouldLoadGitHubPanelData({
+    gitPanelMode,
+    shouldLoadDiffs,
+    diffSource,
   });
 
-  const handleCheckoutBranch = useCallback(
-    async (name: string) => {
-      await checkoutBranch(name);
-      refreshGitStatus();
-    },
-    [checkoutBranch, refreshGitStatus],
-  );
-
-  const handleCheckoutPullRequest = useCallback(
-    async (prNumber: number) => {
-      try {
-        await checkoutPullRequest(prNumber);
-        await Promise.resolve(refreshGitStatus());
-        await Promise.resolve(refreshGitLog());
-      } catch (error) {
-        alertError(error);
-      }
-    },
-    [alertError, checkoutPullRequest, refreshGitLog, refreshGitStatus],
-  );
-
-  const handleCreateBranch = useCallback(
-    async (name: string) => {
-      await createBranch(name);
-      refreshGitStatus();
-    },
-    [createBranch, refreshGitStatus],
-  );
-
-  const currentBranch = gitStatus.branchName ?? null;
-  const isBranchSwitcherEnabled =
-    Boolean(activeWorkspace?.connected) && activeWorkspace?.kind !== "worktree";
+  const {
+    branches,
+    currentBranch,
+    isBranchSwitcherEnabled,
+    handleCheckoutBranch,
+    handleCheckoutPullRequest,
+    handleCreateBranch,
+  } = useMainAppGitBranchActions({
+    activeWorkspace,
+    addDebugEntry,
+    refreshGitStatus,
+    refreshGitLog,
+    currentBranch: gitStatus.branchName ?? null,
+  });
 
   const {
     applyWorktreeChanges: handleApplyWorktreeChanges,
@@ -246,12 +357,7 @@ export function useMainAppGitState({
     refreshGitStatus,
   });
 
-  const fileStatus =
-    gitStatus.error
-      ? "Git status unavailable"
-      : gitStatus.files.length > 0
-        ? `${gitStatus.files.length} file${gitStatus.files.length === 1 ? "" : "s"} changed`
-        : "Working tree clean";
+  const fileStatus = buildGitStatusText(gitStatus);
 
   useSyncSelectedDiffPath({
     diffSource,
@@ -301,7 +407,7 @@ export function useMainAppGitState({
     lastReviewThreadId: lastPullRequestReviewThreadId,
     reviewActions: pullRequestReviewActions,
     runPullRequestReview,
-  } = usePullRequestReviewActions({
+  } = useMainAppPullRequestReviewState({
     activeWorkspace,
     activeThreadId,
     reviewDeliveryMode: appSettings.reviewDeliveryMode,

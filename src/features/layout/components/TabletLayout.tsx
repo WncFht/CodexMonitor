@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from "react";
 import { MainTopbar } from "../../app/components/MainTopbar";
+import { ChatPane } from "./ChatPane";
 
 type TabletLayoutProps = {
   tabletNavNode: ReactNode;
@@ -64,10 +65,9 @@ export function TabletLayout({
               className="tablet-topbar"
             />
             {tabletTab === "codex" && (
-              <>
-                <div className="content tablet-content">{messagesNode}</div>
-                {composerNode}
-              </>
+              <div className="content tablet-content">
+                <ChatPane messagesNode={messagesNode} composerNode={composerNode} />
+              </div>
             )}
             {tabletTab === "git" && (
               <div className="tablet-git">

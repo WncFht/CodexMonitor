@@ -1,5 +1,6 @@
 import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { MainTopbar } from "../../app/components/MainTopbar";
+import { ChatPane } from "./ChatPane";
 
 type CenterMode = "chat" | "diff";
 
@@ -108,6 +109,7 @@ export function DesktopLayout({
 }: DesktopLayoutProps) {
   const diffLayerRef = useRef<HTMLDivElement | null>(null);
   const chatLayerRef = useRef<HTMLDivElement | null>(null);
+  const chatPaneNode = <ChatPane messagesNode={messagesNode} composerNode={composerNode} />;
   const diffLayerActive = isActiveLayer(centerMode, "diff");
   const chatLayerActive = isActiveLayer(centerMode, "chat");
   const showDiffViewer = shouldRenderDiffViewer({
@@ -168,7 +170,7 @@ export function DesktopLayout({
                     })}
                     ref={chatLayerRef}
                   >
-                    {messagesNode}
+                    {chatPaneNode}
                   </div>
                   <div
                     className="content-split-resizer"
@@ -210,7 +212,7 @@ export function DesktopLayout({
                     aria-hidden={!splitChatDiffView ? !chatLayerActive : undefined}
                     ref={chatLayerRef}
                   >
-                    {messagesNode}
+                    {chatPaneNode}
                   </div>
                 </>
               )}
@@ -235,8 +237,6 @@ export function DesktopLayout({
               />
               <div className="right-panel-bottom">{planPanelNode}</div>
             </div>
-
-            {composerNode}
             {terminalDockNode}
             {debugPanelNode}
           </>

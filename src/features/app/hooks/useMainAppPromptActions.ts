@@ -53,70 +53,61 @@ export function useMainAppPromptActions({
   getGlobalPromptsDir,
   alertError,
 }: UseMainAppPromptActionsArgs) {
-  const handleCreatePrompt = useCallback(
-    async (data: PromptPayload) => {
+  const runPromptAction = useCallback(
+    async (action: () => Promise<void>) => {
       try {
-        await createPrompt(data);
+        await action();
       } catch (error) {
         alertError(error);
       }
     },
-    [alertError, createPrompt],
+    [alertError],
+  );
+
+  const handleCreatePrompt = useCallback(
+    async (data: PromptPayload) => {
+      await runPromptAction(() => createPrompt(data));
+    },
+    [createPrompt, runPromptAction],
   );
 
   const handleUpdatePrompt = useCallback(
     async (data: PromptUpdatePayload) => {
-      try {
-        await updatePrompt(data);
-      } catch (error) {
-        alertError(error);
-      }
+      await runPromptAction(() => updatePrompt(data));
     },
-    [alertError, updatePrompt],
+    [runPromptAction, updatePrompt],
   );
 
   const handleDeletePrompt = useCallback(
     async (path: string) => {
-      try {
-        await deletePrompt(path);
-      } catch (error) {
-        alertError(error);
-      }
+      await runPromptAction(() => deletePrompt(path));
     },
-    [alertError, deletePrompt],
+    [deletePrompt, runPromptAction],
   );
 
   const handleMovePrompt = useCallback(
     async (data: { path: string; scope: "workspace" | "global" }) => {
-      try {
-        await movePrompt(data);
-      } catch (error) {
-        alertError(error);
-      }
+      await runPromptAction(() => movePrompt(data));
     },
-    [alertError, movePrompt],
+    [movePrompt, runPromptAction],
   );
 
   const handleRevealWorkspacePrompts = useCallback(async () => {
-    try {
+    await runPromptAction(async () => {
       const path = await getWorkspacePromptsDir();
       await revealItemInDir(path);
-    } catch (error) {
-      alertError(error);
-    }
-  }, [alertError, getWorkspacePromptsDir]);
+    });
+  }, [getWorkspacePromptsDir, runPromptAction]);
 
   const handleRevealGeneralPrompts = useCallback(async () => {
-    try {
+    await runPromptAction(async () => {
       const path = await getGlobalPromptsDir();
       if (!path) {
         return;
       }
       await revealItemInDir(path);
-    } catch (error) {
-      alertError(error);
-    }
-  }, [alertError, getGlobalPromptsDir]);
+    });
+  }, [getGlobalPromptsDir, runPromptAction]);
 
   const handleSendPromptToNewAgent = useCallback(
     async (text: string) => {

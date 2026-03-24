@@ -288,7 +288,7 @@
   padding: 8px;
   min-width: 32px;
   min-height: 32px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid var(--cm-border-emphasis);
   background: var(--cm-surface-panel-strong);
   color: var(--text-muted);
@@ -919,6 +919,35 @@
       color-mix(in srgb, var(--surface-messages) 94%, transparent) 0%,
       color-mix(in srgb, var(--surface-messages) 100%, transparent) 100%
     );
+}
+
+.chat-pane {
+  --composer-overlay-height: 0px;
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.chat-pane-messages {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.chat-pane-composer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.chat-pane-composer > .composer {
+  pointer-events: auto;
 }
 
 .content-split {
